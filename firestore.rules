@@ -1,116 +1,341 @@
-
+/**
+ * @fileoverview Firestore Security Rules for the BrainQuest application.
+ *
+ * Core Philosophy:
+ * This ruleset prioritizes user data protection with an ownership model where users can only
+ * access their own data. Public data (e.g., posts, courses) is readable by all, but
+ * writable only by authorized users or under specific conditions.  Schema validation is
+ * relaxed to allow for rapid prototyping, focusing instead on secure authorization.
+ *
+ * Data Structure:
+ * - User-specific data is nested under `/users/{userId}`.
+ * - Public data (e.g., `/posts`, `/courses`) is stored in top-level collections.
+ * - Partner-related data is stored under `/partners/{partnerId}`.
+ *
+ * Key Security Decisions:
+ * - User listing is generally disallowed.
+ * - Ambiguous relationships default to strict owner-only access.
+ * - All write operations are explicitly authorized.
+ * - Authorization is simplified through data denormalization (e.g., ownership fields).
+ * - Posts are readable by everyone, but can only be written by authenticated users.
+ */
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper functions
-    function isOwner(uid) {
-      return request.auth != null && request.auth.uid == uid;
+
+    /**
+     * @description Allows anyone to read posts, but requires authentication to create, update, or delete them.
+     * @path /posts/{postId}
+     * @allow (get, list): if true
+     * @allow (create): if request.auth != null
+     * @allow (update, delete): if request.auth != null && resource.data.author.uid == request.auth.uid
+     * @deny (create, update, delete): if request.auth == null
+     * @principle Public read, owner-only writes for posts.
+     */
+    match /posts/{postId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && isExistingOwner(resource.data.author.uid);
+      allow delete: if isSignedIn() && isExistingOwner(resource.data.author.uid);
     }
-    function isExistingOwner(uid) {
-      return request.auth != null && request.auth.uid == resource.data.uid;
+
+    /**
+     * @description Restricts access to a user's profile to the user themselves.
+     * @path /users/{userId}/profile/{profileId}
+     * @allow (get, list): if isOwner(userId)
+     * @allow (create): if isOwner(userId) && request.resource.data.id == userId;
+     * @allow (update): if isOwner(userId) && resource.data.id == userId;
+     * @allow (delete): if isOwner(userId) && resource.data.id == userId;
+     * @principle Enforces document ownership for user profiles.
+     */
+    match /users/{userId}/profile/{profileId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && resource.data.id == userId;
+      allow delete: if isOwner(userId) && isExistingOwner(userId);
     }
+
+    /**
+     * @description Restricts access to a user's enrollments to the user themselves.
+     * @path /users/{userId}/enrollments/{courseId}
+     * @allow (get, list): if isOwner(userId)
+     * @allow (create): if isOwner(userId);
+     * @allow (update): if isOwner(userId);
+     * @allow (delete): if isOwner(userId);
+     * @principle Enforces document ownership for user enrollments.
+     */
+    match /users/{userId}/enrollments/{courseId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Restricts access to a user's quest progress to the user themselves.
+     * @path /users/{userId}/quest-progress/main
+     * @allow (get, list): if isOwner(userId)
+     * @allow (create): if isOwner(userId);
+     * @allow (update): if isOwner(userId);
+     * @allow (delete): if isOwner(userId);
+     * @principle Enforces document ownership for user quest progress.
+     */
+    match /users/{userId}/quest-progress/main {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Allows anyone to read courses, but restricts writes.
+     * @path /courses/{courseId}
+     * @allow (get, list): if true
+     * @allow (create): if false; // TODO: Add authorization logic for course creation.
+     * @allow (update): if false; // TODO: Add authorization logic for course updates.
+     * @allow (delete): if false; // TODO: Add authorization logic for course deletion.
+     * @principle Public read, restricted writes for courses.
+     */
+    match /courses/{courseId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Allows anyone to read chapters, but restricts writes.
+     * @path /courses/{courseId}/chapters/{chapterId}
+     * @allow (get, list): if true
+     * @allow (create): if false; // TODO: Add authorization logic for chapter creation.
+     * @allow (update): if false; // TODO: Add authorization logic for chapter updates.
+     * @allow (delete): if false; // TODO: Add authorization logic for chapter deletion.
+     * @principle Public read, restricted writes for chapters.
+     */
+    match /courses/{courseId}/chapters/{chapterId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Allows anyone to read lessons, but restricts writes.
+     * @path /courses/{courseId}/chapters/{chapterId}/lessons/{lessonId}
+     * @allow (get, list): if true
+     * @allow (create): if false; // TODO: Add authorization logic for lesson creation.
+     * @allow (update): if false; // TODO: Add authorization logic for lesson updates.
+     * @allow (delete): if false; // TODO: Add authorization logic for lesson deletion.
+     * @principle Public read, restricted writes for lessons.
+     */
+    match /courses/{courseId}/chapters/{chapterId}/lessons/{lessonId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Restricts access to a user's transactions to the user themselves.
+     * @path /users/{userId}/transactions/{transactionId}
+     * @allow (get, list): if isOwner(userId)
+     * @allow (create): if isOwner(userId);
+     * @allow (update): if isOwner(userId);
+     * @allow (delete): if isOwner(userId);
+     * @principle Enforces document ownership for user transactions.
+     */
+    match /users/{userId}/transactions/{transactionId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Allows anyone to read study rooms, but restricts writes.
+     * @path /study-rooms/{roomId}
+     * @allow (get, list): if true
+     * @allow (create): if false; // TODO: Add authorization logic for study room creation.
+     * @allow (update): if false; // TODO: Add authorization logic for study room updates.
+     * @allow (delete): if false; // TODO: Add authorization logic for study room deletion.
+     * @principle Public read, restricted writes for study rooms.
+     */
+    match /study-rooms/{roomId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Allows anyone to read contests, but restricts writes.
+     * @path /contests/{contestId}
+     * @allow (get, list): if true
+     * @allow (create): if false; // TODO: Add authorization logic for contest creation.
+     * @allow (update): if false; // TODO: Add authorization logic for contest updates.
+     * @allow (delete): if false; // TODO: Add authorization logic for contest deletion.
+     * @principle Public read, restricted writes for contests.
+     */
+    match /contests/{contestId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+   /**
+     * @description Restricts access to a user's coupons to the user themselves.
+     * @path /users/{userId}/coupons/{couponId}
+     * @allow (get, list): if isOwner(userId)
+     * @allow (create): if isOwner(userId);
+     * @allow (update): if isOwner(userId);
+     * @allow (delete): if isOwner(userId);
+     * @principle Enforces document ownership for user coupons.
+     */
+    match /users/{userId}/coupons/{couponId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+    /**
+     * @description Allows anyone to read partner information, but restricts writes.
+     * @path /partners/{partnerId}
+     * @allow (get, list): if true
+     * @allow (create): if false; // TODO: Add authorization logic for partner creation.
+     * @allow (update): if false; // TODO: Add authorization logic for partner updates.
+     * @allow (delete): if false; // TODO: Add authorization logic for partner deletion.
+     * @principle Public read, restricted writes for partners.
+     */
+    match /partners/{partnerId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Allows anyone to read partner courses, but restricts writes.
+     * @path /partners/{partnerId}/courses/{courseId}
+     * @allow (get, list): if true
+     * @allow (create): if false; // TODO: Add authorization logic for partner course creation.
+     * @allow (update): if false; // TODO: Add authorization logic for partner course updates.
+     * @allow (delete): if false; // TODO: Add authorization logic for partner course deletion.
+     * @principle Public read, restricted writes for partner courses.
+     */
+    match /partners/{partnerId}/courses/{courseId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+     /**
+     * @description Allows anyone to read partner products, but restricts writes.
+     * @path /partners/{partnerId}/products/{productId}
+     * @allow (get, list): if true
+     * @allow (create): if false; // TODO: Add authorization logic for partner product creation.
+     * @allow (update): if false; // TODO: Add authorization logic for partner product updates.
+     * @allow (delete): if false; // TODO: Add authorization logic for partner product deletion.
+     * @principle Public read, restricted writes for partner products.
+     */
+    match /partners/{partnerId}/products/{productId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Restricts access to partner applications.
+     * @path /partner-applications/{applicationId}
+     * @allow (get, list): if false; // TODO: Add authorization logic for partner application access (e.g., admin role).
+     * @allow (create): if true; // Allow anyone to submit a partner application.
+     * @allow (update): if false; // TODO: Add authorization logic for partner application updates (e.g., admin role).
+     * @allow (delete): if false; // TODO: Add authorization logic for partner application deletion (e.g., admin role).
+     * @principle Restricted read/write access for partner applications, except for creation.
+     */
+    match /partner-applications/{applicationId} {
+      allow get, list: if false;
+      allow create: if true;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Restricts access to economy settings.
+     * @path /app-settings/economy
+     * @allow (get, list): if false; // TODO: Add authorization logic for economy settings access (e.g., admin role).
+     * @allow (create): if false; // TODO: Add authorization logic for economy settings creation (e.g., admin role).
+     * @allow (update): if false; // TODO: Add authorization logic for economy settings updates (e.g., admin role).
+     * @allow (delete): if false; // TODO: Add authorization logic for economy settings deletion (e.g., admin role).
+     * @principle Restricted read/write access for economy settings.
+     */
+    match /app-settings/economy {
+      allow get, list: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Restricts access to subscription plans.
+     * @path /app-settings/monetization/subscription-plans/{planId}
+     * @allow (get, list): if true; // Allow public read access for subscription plans.
+     * @allow (create): if false; // TODO: Add authorization logic for subscription plan creation (e.g., admin role).
+     * @allow (update): if false; // TODO: Add authorization logic for subscription plan updates (e.g., admin role).
+     * @allow (delete): if false; // TODO: Add authorization logic for subscription plan deletion (e.g., admin role).
+     * @principle Public read, restricted writes for subscription plans.
+     */
+    match /app-settings/monetization/subscription-plans/{planId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Restricts access to coin bundles.
+     * @path /app-settings/monetization/coin-bundles/{bundleId}
+     * @allow (get, list): if true; // Allow public read access for coin bundles.
+     * @allow (create): if false; // TODO: Add authorization logic for coin bundle creation (e.g., admin role).
+     * @allow (update): if false; // TODO: Add authorization logic for coin bundle updates (e.g., admin role).
+     * @allow (delete): if false; // TODO: Add authorization logic for coin bundle deletion (e.g., admin role).
+     * @principle Public read, restricted writes for coin bundles.
+     */
+    match /app-settings/monetization/coin-bundles/{bundleId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+     /**
+     * @description Allows anyone to read quests, but restricts writes.
+     * @path /quests/{questId}
+     * @allow (get, list): if true
+     * @allow (create): if false; // TODO: Add authorization logic for quest creation.
+     * @allow (update): if false; // TODO: Add authorization logic for quest updates.
+     * @allow (delete): if false; // TODO: Add authorization logic for quest deletion.
+     * @principle Public read, restricted writes for quests.
+     */
+    match /quests/{questId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // --- Helper Functions ---
     function isSignedIn() {
       return request.auth != null;
     }
-    function isSuperAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)/profile/$(request.auth.uid)).data.isSuperAdmin == true;
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
 
-    // App-wide settings can be read by any authenticated user
-    match /app-settings/{document=**} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      // Write access should be restricted to admins in a real scenario
-      allow write: if isSuperAdmin();
-    }
-
-    // All public content collections can be read by authenticated users
-    match /courses/{courseId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn(); // Allow any user to create a course
-      allow update: if isSignedIn() && resource.data.instructorId == request.auth.uid; // Only instructor can update
-      allow delete: if isSignedIn() && resource.data.instructorId == request.auth.uid; // Only instructor can delete
-    }
-
-    match /courses/{courseId}/{subcollection=**} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.instructorId == request.auth.uid;
-    }
-
-    match /posts/{postId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.authorUid == request.auth.uid;
-    }
-
-    match /quests/{questId} {
-      allow get, list: if isSignedIn();
-      allow write: if isSuperAdmin(); // Only admins can create/edit quests
-    }
-
-    match /study-rooms/{roomId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.hostId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.hostId == request.auth.uid;
-
-      // Messages within a study room can be read/written by any signed-in user
-      match /messages/{messageId} {
-        allow read, write: if isSignedIn();
-      }
-    }
-    
-    match /contests/{contestId} {
-        allow get, list: if isSignedIn();
-        allow write: if isSuperAdmin();
-    }
-    
-    match /partners/{partnerId} {
-      allow get, list: if isSignedIn();
-      allow write: if isSuperAdmin() || (isSignedIn() && resource.data.id == get(/databases/$(database)/documents/users/$(request.auth.uid)/profile/$(request.auth.uid)).data.partnerId);
-    }
-
-    match /partners/{partnerId}/{subcollection=**} {
-      allow get, list: if isSignedIn();
-      allow write: if isSuperAdmin() || (isSignedIn() && get(/databases/$(database)/documents/partners/$(partnerId)).data.id == get(/databases/$(database)/documents/users/$(request.auth.uid)/profile/$(request.auth.uid)).data.partnerId);
-    }
-    
-    match /partner-applications/{applicationId} {
-        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-        allow read, write: if isSuperAdmin();
-    }
-    
-    // Rules for all user-specific data
-    match /users/{uid}/{document=**} {
-        allow read, write: if isOwner(uid);
-    }
-
-    // Rules for user profiles specifically
-    match /users/{uid}/profile/{profileId} {
-      allow get: if isSignedIn(); // Allow any signed in user to view profiles
-      allow list: if isSignedIn(); // This is needed for the tutors page query
-      allow create: if isOwner(uid) && request.resource.data.id == uid;
-      allow update: if isOwner(uid);
-      allow delete: if isOwner(uid);
-    }
-    
-    // Collection group queries
-    match /{path=**}/profile/{profileId} {
-        allow read: if isSignedIn();
-    }
-    
-    match /chats/{chatId} {
-      // Allow read/write only if the user is a participant
-      allow read, write: if isSignedIn() && request.auth.uid in resource.data.participants;
-      allow create: if isSignedIn() && request.auth.uid in request.resource.data.participants;
-
-      match /messages/{messageId} {
-        allow read, write: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
-        allow create: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
-      }
+    function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
     }
   }
 }
