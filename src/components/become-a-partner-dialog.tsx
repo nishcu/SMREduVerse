@@ -33,7 +33,7 @@ import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, setDoc, doc } from 'firebase/firestore';
 
 const PartnerApplicationSchema = z.object({
   entityName: z.string().min(2, 'Please enter the name of your entity.'),
@@ -80,12 +80,15 @@ export function BecomeAPartnerDialog({
 
       setIsPending(true);
       try {
-          await addDoc(collection(db, 'partner-applications'), {
+          const appRef = await addDoc(collection(db, 'partner-applications'), {
               ...data,
               userId: user.id,
               status: 'pending',
               createdAt: serverTimestamp(),
           });
+          
+          const userProfileRef = doc(db, `users/${user.id}/profile/${user.id}`);
+          await setDoc(userProfileRef, { partnerApplicationId: appRef.id }, { merge: true });
 
           toast({
               title: 'Application Submitted!',
