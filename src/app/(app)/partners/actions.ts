@@ -1,9 +1,7 @@
-
 'use server';
 import { getAdminDb } from '@/lib/firebase-admin-new';
 import type { Partner, PartnerCourse, PartnerProduct, Contest } from '@/lib/types';
 import { Timestamp } from 'firebase-admin/firestore';
-
 
 export async function getAllPartnersAction(): Promise<{ success: boolean; data?: Partner[]; error?: string }> {
   const db = getAdminDb();
@@ -48,7 +46,7 @@ export async function getPartnerDataAction(partnerId: string): Promise<{
         const [coursesSnap, productsSnap, contestsSnap] = await Promise.all([coursesPromise, productsPromise, contestsPromise]);
 
         const courses = coursesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerCourse));
-        const products = productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerProduct));
+        const products = productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerCourse));
         const contests = contestsSnap.docs.map(doc => ({ 
             id: doc.id, 
             ...doc.data(),
