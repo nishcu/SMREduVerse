@@ -1,203 +1,77 @@
 /**
- * @fileoverview Firestore Security Rules for the application.
- *
- * Core Philosophy:
- * This ruleset prioritizes user data protection by enforcing strict ownership and role-based access control.
- * It adopts a defense-in-depth approach, explicitly denying any potentially insecure operations.
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a strict user-ownership model for user-specific data
+ * and allows public read access to some collections with owner-controlled writes.
  *
  * Data Structure:
- * - User data is primarily nested under /users/{userId}, enabling fine-grained access control.
- * - Top-level collections such as /courses, /posts, and /study-rooms are designed for public readability with restricted write access.
- * - Partner-related data is stored under /partners/{partnerId} and /partner-applications/{applicationId}.
+ * - User-specific data is nested under /users/{userId}.
+ * - Courses, Quests, Study Rooms, and Posts are stored in top-level collections.
+ * - Economy settings and monetization options are stored under /app-settings.
+ * - Partner-related data is stored under /partners.
  *
  * Key Security Decisions:
- * - Listing all users is strictly forbidden for security and privacy reasons.
- * - Public read access is granted to certain collections to facilitate content discovery, but writes are carefully controlled.
- * - Helper functions encapsulate complex authorization logic to improve maintainability and readability.
- * - Data consistency between paths and document fields is enforced to prevent data integrity issues.
+ * - Users can only read/write their own data under /users/{userId}.
+ * - Listing of user documents is disallowed to protect privacy.
+ * - Public read access is granted for courses, quests, study rooms, and posts,
+ *   but writes are restricted to owners (where applicable).
+ * - Super admin roles are not currently implemented.
+ * - All writes are validated to ensure authenticated users.
  *
  * Denormalization for Authorization:
- *  - The rules assume that authorization data (e.g., ownership, roles) is denormalized directly into the documents being secured. This avoids costly `get()` calls within the rules.
- *  - For example, a `Post` document should contain the `author.uid` to verify ownership.
+ * - Post documents should contain an authorId field to control write access.
  *
  * Structural Segregation:
- *  - Private user data is stored in user-specific subcollections (e.g., `/users/{userId}/enrollments`), while public content is stored in top-level collections (e.g., `/posts`).
- *  - This separation simplifies access control and improves query performance.
+ * - Public data (posts, courses, etc.) is stored in top-level collections,
+ *   while private user data (enrollments, transactions) is stored under /users/{userId}.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the user is signed in.
+     * @description Checks if the request is made by an authenticated user.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Verifies user authentication.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Checks if the authenticated user is the owner of the resource.
+     * @description Checks if the authenticated user ID matches the provided user ID.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Enforces document ownership based on user ID.
      */
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return isSignedIn() && request.auth.uid == userId;
     }
 
     /**
-     * @description Checks if the authenticated user is the existing owner of the resource.
-     * This function also validates resource existence to prevent errors.
+     * @description Checks if the authenticated user is the existing owner of the document.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Enforces document ownership for updates and deletes, verifying existence.
      */
     function isExistingOwner(userId) {
       return isOwner(userId) && resource != null;
     }
 
     /**
-     * @description App Settings - Economy
-     * @path /app-settings/economy
-     * @allow (get) Any user can read the economy settings.
-     * @allow (create, update, delete) No one can create, update or delete the economy settings.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Any user.
-     * @deny (update) Any user.
-     * @deny (delete) Any user.
-     * @principle Restricts write access to app settings.
-     */
-    match /app-settings/economy {
-      allow get: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-      allow list: if false;
-    }
-
-    /**
-     * @description App Settings - Monetization - Subscription Plans
-     * @path /app-settings/monetization/subscription-plans/{planId}
-     * @allow (get) Any user can read the subscription plans.
-     * @allow (create, update, delete) No one can create, update or delete the subscription plans.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Any user.
-     * @deny (update) Any user.
-     * @deny (delete) Any user.
-     * @principle Restricts write access to app settings.
-     */
-    match /app-settings/monetization/subscription-plans/{planId} {
-      allow get: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-      allow list: if true;
-    }
-
-    /**
-     * @description App Settings - Monetization - Coin Bundles
-     * @path /app-settings/monetization/coin-bundles/{bundleId}
-     * @allow (get) Any user can read the coin bundles.
-     * @allow (create, update, delete) No one can create, update or delete the coin bundles.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Any user.
-     * @deny (update) Any user.
-     * @deny (delete) Any user.
-     * @principle Restricts write access to app settings.
-     */
-    match /app-settings/monetization/coin-bundles/{bundleId} {
-      allow get: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-      allow list: if true;
-    }
-
-    /**
-     * @description Quests
-     * @path /quests/{questId}
-     * @allow (get) Any user can read quests.
-     * @allow (create, update, delete) No one can create, update or delete quests.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Any user.
-     * @deny (update) Any user.
-     * @deny (delete) Any user.
-     * @principle Public read, restricted write.
-     */
-    match /quests/{questId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Courses
-     * @path /courses/{courseId}
-     * @allow (get) Any user can read courses.
-     * @allow (create, update, delete) No one can create, update or delete courses.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Any user.
-     * @deny (update) Any user.
-     * @deny (delete) Any user.
-     * @principle Public read, restricted write.
-     */
-    match /courses/{courseId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Chapters within a course
-     * @path /courses/{courseId}/chapters/{chapterId}
-     * @allow (get) Any user can read chapters.
-     * @allow (create, update, delete) No one can create, update or delete chapters.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Any user.
-     * @deny (update) Any user.
-     * @deny (delete) Any user.
-     * @principle Public read, restricted write.
-     */
-    match /courses/{courseId}/chapters/{chapterId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Lessons within a chapter
-     * @path /courses/{courseId}/chapters/{chapterId}/lessons/{lessonId}
-     * @allow (get) Any user can read lessons.
-     * @allow (create, update, delete) No one can create, update or delete lessons.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Any user.
-     * @deny (update) Any user.
-     * @deny (delete) Any user.
-     * @principle Public read, restricted write.
-     */
-    match /courses/{courseId}/chapters/{chapterId}/lessons/{lessonId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description User Profile
+     * @description Grants owner-only access to user profile data.
      * @path /users/{userId}/profile/{profileId}
-     * @allow (get) Any user can read a profile.
-     * @allow (create) Only the user can create their profile, and the user ID in the path must match the user ID in the data.
-     * @allow (update) Only the user can update their profile, provided they already have one.
-     * @allow (delete) Only the user can delete their profile, provided they already have one.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Mismatched user ID.
-     * @deny (update) Unauthorized user or non-existent profile.
-     * @deny (delete) Unauthorized user or non-existent profile.
-     * @principle Enforces user-ownership for profile data and validates relational integrity.
+     * @allow (get, list) User A reading their own profile data.
+     * @allow (create, update, delete) User A creating/updating/deleting their own profile data.
+     * @deny (get, list) User A reading User B's profile data.
+     * @deny (create, update, delete) User A attempting to modify User B's profile data.
+     * @principle Enforces strict user ownership for profile management.
      */
     match /users/{userId}/profile/{profileId} {
-      allow get: if true;
+      allow get: if isOwner(userId);
       allow list: if false;
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
@@ -205,17 +79,13 @@ service cloud.firestore {
     }
 
     /**
-     * @description User Enrollments
+     * @description Grants owner-only access to user enrollment data.
      * @path /users/{userId}/enrollments/{courseId}
-     * @allow (get) Only the user can read their enrollments.
-     * @allow (create) Only the user can create their enrollments.
-     * @allow (update) Only the user can update their enrollments.
-     * @allow (delete) Only the user can delete their enrollments.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Unauthorized user.
-     * @deny (update) Unauthorized user.
-     * @deny (delete) Unauthorized user.
-     * @principle Enforces user-ownership for enrollment data.
+     * @allow (get, list) User A reading their own enrollment data.
+     * @allow (create, update, delete) User A creating/updating/deleting their own enrollment data.
+     * @deny (get, list) User A reading User B's enrollment data.
+     * @deny (create, update, delete) User A attempting to modify User B's enrollment data.
+     * @principle Enforces strict user ownership for enrollment management.
      */
     match /users/{userId}/enrollments/{courseId} {
       allow get: if isOwner(userId);
@@ -226,17 +96,13 @@ service cloud.firestore {
     }
 
     /**
-     * @description User Quest Progress
+     * @description Grants owner-only access to user quest progress data.
      * @path /users/{userId}/quest-progress/main
-     * @allow (get) Only the user can read their quest progress.
-     * @allow (create) Only the user can create their quest progress.
-     * @allow (update) Only the user can update their quest progress.
-     * @allow (delete) Only the user can delete their quest progress.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Unauthorized user.
-     * @deny (update) Unauthorized user.
-     * @deny (delete) Unauthorized user.
-     * @principle Enforces user-ownership for quest progress data.
+     * @allow (get, list) User A reading their own quest progress data.
+     * @allow (create, update, delete) User A creating/updating/deleting their own quest progress data.
+     * @deny (get, list) User A reading User B's quest progress data.
+     * @deny (create, update, delete) User A attempting to modify User B's quest progress data.
+     * @principle Enforces strict user ownership for quest progress management.
      */
     match /users/{userId}/quest-progress/main {
       allow get: if isOwner(userId);
@@ -247,180 +113,210 @@ service cloud.firestore {
     }
 
     /**
-     * @description Posts
+     * @description Grants public read access to posts, with owner-only writes.
      * @path /posts/{postId}
-     * @allow (get) Any user can read posts.
-     * @allow (create) Only a signed-in user can create a post, and author.uid in the data should match the user's UID.
-     * @allow (update) Only the author can update their post, provided the post exists.
-     * @allow (delete) Only the author can delete their post, provided the post exists.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Unauthorized user or mismatched author ID.
-     * @deny (update) Unauthorized user or non-existent post.
-     * @deny (delete) Unauthorized user or non-existent post.
-     * @principle Public read, owner-only writes, enforces author ID consistency.
+     * @allow (get, list) Any user reading a post.
+     * @allow (create) User A creating a post with authorId matching their UID.
+     * @allow (update, delete) User A updating/deleting their own post (authorId matches UID).
+     * @deny (create) User A creating a post with authorId not matching their UID.
+     * @deny (update, delete) User A updating/deleting a post they don't own.
+     * @principle Allows public reads with controlled writes based on ownership.
      */
     match /posts/{postId} {
-      allow get: if true;
-      allow list: if true;
+      allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.author.uid == request.auth.uid;
       allow update: if isSignedIn() && resource.data.author.uid == request.auth.uid && resource != null;
       allow delete: if isSignedIn() && resource.data.author.uid == request.auth.uid && resource != null;
     }
 
     /**
-     * @description User Transactions
+     * @description Grants owner-only access to user transaction data.
      * @path /users/{userId}/transactions/{transactionId}
-     * @allow (get) Only the user can read their transactions.
-     * @allow (create) Only the user can create their transactions.
-     * @allow (update) No one can update a transaction.
-     * @allow (delete) No one can delete a transaction.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Unauthorized user.
-     * @deny (update) Any user.
-     * @deny (delete) Any user.
-     * @principle Enforces user-ownership for transaction data.
+     * @allow (get, list) User A reading their own transaction data.
+     * @allow (create, update, delete) User A creating/updating/deleting their own transaction data.
+     * @deny (get, list) User A reading User B's transaction data.
+     * @deny (create, update, delete) User A attempting to modify User B's transaction data.
+     * @principle Enforces strict user ownership for transaction management.
      */
     match /users/{userId}/transactions/{transactionId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isOwner(userId);
-      allow update: if false;
-      allow delete: if false;
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Study Rooms
+     * @description Grants public read access to study rooms.
      * @path /study-rooms/{roomId}
-     * @allow (get) Any user can read study rooms.
-     * @allow (create, update, delete) No one can create, update or delete study rooms.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Any user.
-     * @deny (update) Any user.
-     * @deny (delete) Any user.
-     * @principle Public read, restricted write.
+     * @allow (get, list) Any user reading a study room.
+     * @deny (create, update, delete) No write operations allowed.
+     * @principle Allows public reads.
      */
     match /study-rooms/{roomId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Contests
+     * @description Grants public read access to contests.
      * @path /contests/{contestId}
-     * @allow (get) Any user can read contests.
-     * @allow (create, update, delete) No one can create, update or delete contests.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Any user.
-     * @deny (update) Any user.
-     * @deny (delete) Any user.
-     * @principle Public read, restricted write.
+     * @allow (get, list) Any user reading a contest.
+     * @deny (create, update, delete) No write operations allowed.
+     * @principle Allows public reads.
      */
     match /contests/{contestId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description User Coupons
+     * @description Grants owner-only access to user coupon data.
      * @path /users/{userId}/coupons/{couponId}
-     * @allow (get) Only the user can read their coupons.
-     * @allow (create) Only the user can create their coupons.
-     * @allow (update) No one can update the coupon.
-     * @allow (delete) No one can delete the coupon.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Unauthorized user.
-     * @deny (update) Any user.
-     * @deny (delete) Any user.
-     * @principle Enforces user-ownership for coupon data.
+     * @allow (get, list) User A reading their own coupon data.
+     * @allow (create, update, delete) User A creating/updating/deleting their own coupon data.
+     * @deny (get, list) User A reading User B's coupon data.
+     * @deny (create, update, delete) User A attempting to modify User B's coupon data.
+     * @principle Enforces strict user ownership for coupon management.
      */
     match /users/{userId}/coupons/{couponId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isOwner(userId);
-      allow update: if false;
-      allow delete: if false;
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Partners
+     * @description Grants public read access to partner data.
      * @path /partners/{partnerId}
-     * @allow (get) Any user can read partner information.
-     * @allow (create, update, delete) No one can create, update or delete partner information.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Any user.
-     * @deny (update) Any user.
-     * @deny (delete) Any user.
-     * @principle Public read, restricted write.
+     * @allow (get, list) Any user reading partner data.
+     * @deny (create, update, delete) No write operations allowed.
+     * @principle Allows public reads.
      */
     match /partners/{partnerId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
 
-   /**
-     * @description Partner Courses
+    /**
+     * @description Grants public read access to partner course data.
      * @path /partners/{partnerId}/courses/{courseId}
-     * @allow (get) Any user can read partner courses.
-     * @allow (create, update, delete) No one can create, update or delete partner courses.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Any user.
-     * @deny (update) Any user.
-     * @deny (delete) Any user.
-     * @principle Public read, restricted write.
+     * @allow (get, list) Any user reading partner course data.
+     * @deny (create, update, delete) No write operations allowed.
+     * @principle Allows public reads.
      */
     match /partners/{partnerId}/courses/{courseId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Partner Products
+     * @description Grants public read access to partner product data.
      * @path /partners/{partnerId}/products/{productId}
-     * @allow (get) Any user can read partner products.
-     * @allow (create, update, delete) No one can create, update or delete partner products.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Any user.
-     * @deny (update) Any user.
-     * @deny (delete) Any user.
-     * @principle Public read, restricted write.
+     * @allow (get, list) Any user reading partner product data.
+     * @deny (create, update, delete) No write operations allowed.
+     * @principle Allows public reads.
      */
     match /partners/{partnerId}/products/{productId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
-    
+
     /**
-     * @description Partner Applications
+     * @description Restricts access to partner application data.
      * @path /partner-applications/{applicationId}
-     * @allow (get) Any user can read partner applications.
-     * @allow (create, update, delete) No one can create, update or delete partner applications.
-     * @deny (get) Unauthorized user.
-     * @deny (create) Any user.
-     * @deny (update) Any user.
-     * @deny (delete) Any user.
-     * @principle Restricted access to partner applications.
+     * @allow get, list: if false;
+     * @allow create, update, delete: if false;
+     * @principle No read or write access granted.
      */
     match /partner-applications/{applicationId} {
-      allow get: if false;
-      allow list: if false;
-      allow create: if isSignedIn();
-      allow update: if false;
-      allow delete: if false;
+        allow get, list: if false;
+        allow create, update, delete: if false;
+    }
+
+    /**
+     * @description Grants public read access to app settings.
+     * @path /app-settings/economy
+     * @allow get, list: if true;
+     * @deny create, update, delete: if false;
+     * @principle Allows public reads.
+     */
+    match /app-settings/economy {
+        allow get, list: if true;
+        allow create, update, delete: if false;
+    }
+
+     /**
+     * @description Grants public read access to subscription plans.
+     * @path /app-settings/monetization/subscription-plans/{planId}
+     * @allow get, list: if true;
+     * @deny create, update, delete: if false;
+     * @principle Allows public reads.
+     */
+    match /app-settings/monetization/subscription-plans/{planId} {
+        allow get, list: if true;
+        allow create, update, delete: if false;
+    }
+
+    /**
+     * @description Grants public read access to coin bundles.
+     * @path /app-settings/monetization/coin-bundles/{bundleId}
+     * @allow get, list: if true;
+     * @deny create, update, delete: if false;
+     * @principle Allows public reads.
+     */
+    match /app-settings/monetization/coin-bundles/{bundleId} {
+        allow get, list: if true;
+        allow create, update, delete: if false;
+    }
+
+     /**
+     * @description Grants public read access to quests.
+     * @path /quests/{questId}
+     * @allow get, list: if true;
+     * @deny create, update, delete: if false;
+     * @principle Allows public reads.
+     */
+    match /quests/{questId} {
+        allow get, list: if true;
+        allow create, update, delete: if false;
+    }
+
+    /**
+     * @description Grants public read access to courses.
+     * @path /courses/{courseId}
+     * @allow (get, list) Any user reading a course.
+     * @deny (create, update, delete) No write operations allowed.
+     * @principle Allows public reads.
+     */
+    match /courses/{courseId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
+    }
+
+    /**
+     * @description Grants public read access to chapters within a course.
+     * @path /courses/{courseId}/chapters/{chapterId}
+     * @allow (get, list) Any user reading a chapter.
+     * @deny (create, update, delete) No write operations allowed.
+     * @principle Allows public reads.
+     */
+    match /courses/{courseId}/chapters/{chapterId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
+    }
+
+    /**
+     * @description Grants public read access to lessons within a chapter.
+     * @path /courses/{courseId}/chapters/{chapterId}/lessons/{lessonId}
+     * @allow (get, list) Any user reading a lesson.
+     * @deny (create, update, delete) No write operations allowed.
+     * @principle Allows public reads.
+     */
+    match /courses/{courseId}/chapters/{chapterId}/lessons/{lessonId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
   }
 }
