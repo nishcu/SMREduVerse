@@ -1,30 +1,32 @@
-
 'use client';
 import { useState, useEffect } from 'react';
-import { getSubscriptionPlansAction, getCoinBundlesAction } from '@/app/(app)/billing/actions';
+import { getSubscriptionPlansAction, getCoinBundlesAction } from './actions';
 import type { SubscriptionPlan, CoinBundle } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SubscriptionPlanCard } from '@/components/subscription-plan-card';
 import { CoinBundleCard } from '@/components/coin-bundle-card';
 import { CreditCard, Coins } from 'lucide-react';
 
-type BillingState = {
-    plans: SubscriptionPlan[];
-    bundles: CoinBundle[];
-};
-
 export default function BillingPage() {
-    const [state, setState] = useState<BillingState>({ plans: [], bundles: [] });
+    const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+    const [bundles, setBundles] = useState<CoinBundle[]>([]);
     const [isPending, setIsPending] = useState(true);
 
     useEffect(() => {
         const loadData = async () => {
             setIsPending(true);
-            const [plans, bundles] = await Promise.all([
+            const [plansResult, bundlesResult] = await Promise.all([
                 getSubscriptionPlansAction(),
                 getCoinBundlesAction(),
             ]);
-            setState({ plans, bundles });
+
+            if (plansResult.success && plansResult.data) {
+                setPlans(plansResult.data);
+            }
+            if (bundlesResult.success && bundlesResult.data) {
+                setBundles(bundlesResult.data);
+            }
+            
             setIsPending(false);
         };
         loadData();
@@ -42,14 +44,14 @@ export default function BillingPage() {
                     <CreditCard className="h-6 w-6 text-primary" />
                     Subscription Plans
                 </h2>
-                {isPending && state.plans.length === 0 ? (
+                {isPending && plans.length === 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <Skeleton className="h-[400px] w-full" />
                         <Skeleton className="h-[400px] w-full" />
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
-                        {state.plans.map(plan => <SubscriptionPlanCard key={plan.id} plan={plan} />)}
+                        {plans.map(plan => <SubscriptionPlanCard key={plan.id} plan={plan} />)}
                     </div>
                 )}
             </div>
@@ -59,13 +61,13 @@ export default function BillingPage() {
                     <Coins className="h-6 w-6 text-primary" />
                     Purchase Knowledge Coins
                 </h2>
-                {isPending && state.bundles.length === 0 ? (
+                {isPending && bundles.length === 0 ? (
                     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                         {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-[200px] w-full" />)}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                        {state.bundles.map(bundle => <CoinBundleCard key={bundle.id} bundle={bundle} />)}
+                        {bundles.map(bundle => <CoinBundleCard key={bundle.id} bundle={bundle} />)}
                     </div>
                 )}
             </div>

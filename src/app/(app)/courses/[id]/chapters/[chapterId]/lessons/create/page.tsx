@@ -1,7 +1,8 @@
 
 'use client';
-import { useEffect, useActionState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -34,49 +35,56 @@ const LessonSchema = z.object({
   description: z.string().min(1, 'Description cannot be empty.').max(500),
   contentType: z.enum(['video', 'text', 'pdf', 'presentation']),
   contentUrl: z.string().url('Please enter a valid URL.').optional().or(z.literal('')),
-  idToken: z.string(),
-  courseId: z.string(),
-  chapterId: z.string(),
 });
 
 type LessonFormValues = z.infer<typeof LessonSchema>;
 
-const initialState = { success: false, error: null, errors: null };
 
 export default function CreateLessonPage({ params }: { params: { id: string, chapterId: string } }) {
   const { firebaseUser, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [formState, formAction, isPending] = useActionState(createLessonAction, initialState);
-  const formRef = useRef<HTMLFormElement>(null);
+  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const form = useForm<LessonFormValues>({
+    resolver: zodResolver(LessonSchema),
     defaultValues: {
       title: '',
       description: '',
       contentType: 'video',
       contentUrl: '',
-      idToken: '',
-      courseId: params.id,
-      chapterId: params.chapterId,
     },
   });
   
-  useEffect(() => {
-    if (firebaseUser) {
-      firebaseUser.getIdToken().then(token => form.setValue('idToken', token));
+  const onSubmit = async (data: LessonFormValues) => {
+    if (!firebaseUser) {
+        toast({ variant: 'destructive', title: 'Not authenticated' });
+        return;
     }
-  }, [firebaseUser, form]);
 
-  useEffect(() => {
-    if (formState.success) {
+    setIsPending(true);
+    setError(null);
+    const idToken = await firebaseUser.getIdToken();
+    const result = await createLessonAction({ 
+        ...data,
+        idToken,
+        courseId: params.id,
+        chapterId: params.chapterId
+    });
+
+    if (result.success) {
       toast({
         title: 'Lesson Created!',
         description: 'Your new lesson has been added to the chapter.',
       });
       router.push(`/courses/${params.id}/chapters/${params.chapterId}/edit`);
+    } else {
+        setError(result.error || 'An unknown error occurred.');
     }
-  }, [formState, router, toast, params]);
+    setIsPending(false);
+  };
+
 
   if (authLoading) {
     return <p>Loading...</p>;
@@ -92,21 +100,14 @@ export default function CreateLessonPage({ params }: { params: { id: string, cha
         <CardContent>
           <Form {...form}>
             <form
-              ref={formRef}
-              action={formAction}
-              onSubmit={(evt) => {
-                evt.preventDefault();
-                form.handleSubmit(() => {
-                    formRef.current?.submit();
-                })(evt);
-              }}
+              onSubmit={form.handleSubmit(onSubmit)}
               className="space-y-6"
             >
-              {formState.error && (
+              {error && (
                 <Alert variant="destructive">
                   <XCircle className="h-4 w-4" />
                   <AlertTitle>Error Creating Lesson</AlertTitle>
-                  <AlertDescription>{formState.error}</AlertDescription>
+                  <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 
@@ -149,12 +150,8 @@ export default function CreateLessonPage({ params }: { params: { id: string, cha
                   <FormMessage />
                 </FormItem>
               )} />
-
-              <input type="hidden" {...form.register('idToken')} />
-              <input type="hidden" {...form.register('courseId')} />
-              <input type="hidden" {...form.register('chapterId')} />
-
-              <Button type="submit" disabled={isPending || !form.watch('idToken')}>
+              
+              <Button type="submit" disabled={isPending || !firebaseUser}>
                 {isPending ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...</>
                 ) : (

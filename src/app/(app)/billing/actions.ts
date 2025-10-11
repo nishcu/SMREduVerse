@@ -2,29 +2,29 @@
 'use server';
 
 import type { SubscriptionPlan, CoinBundle } from '@/lib/types';
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminDb } from '@/lib/firebase-admin-new';
 
 
-export async function getSubscriptionPlansAction(): Promise<SubscriptionPlan[]> {
-    const { db } = getFirebaseAdmin();
-    if (!db) return [];
+export async function getSubscriptionPlansAction(): Promise<{ success: boolean; data?: SubscriptionPlan[]; error?: string }> {
+    const db = getAdminDb();
     try {
         const snapshot = await db.collection('app-settings/monetization/subscription-plans').get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SubscriptionPlan));
-    } catch (error) {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SubscriptionPlan));
+        return { success: true, data };
+    } catch (error: any) {
         console.error("Error fetching subscription plans: ", error);
-        return [];
+        return { success: false, error: error.message };
     }
 }
 
-export async function getCoinBundlesAction(): Promise<CoinBundle[]> {
-     const { db } = await getFirebaseAdmin();
-    if (!db) return [];
+export async function getCoinBundlesAction(): Promise<{ success: boolean; data?: CoinBundle[]; error?: string }> {
+     const db = getAdminDb();
     try {
         const snapshot = await db.collection('app-settings/monetization/coin-bundles').orderBy('coins', 'asc').get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CoinBundle));
-    } catch (error) {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CoinBundle));
+        return { success: true, data };
+    } catch (error: any) {
         console.error("Error fetching coin bundles: ", error);
-        return [];
+        return { success: false, error: error.message };
     }
 }

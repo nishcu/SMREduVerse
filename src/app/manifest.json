@@ -1,0 +1,21 @@
+{
+  "name": "EduVerse Architect",
+  "short_name": "EduVerse",
+  "description": "The All-in-One Education Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#E5F2FD",
+  "theme_color": "#202F64",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

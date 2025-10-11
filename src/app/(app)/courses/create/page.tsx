@@ -1,6 +1,7 @@
 'use client';
-import { useEffect, useActionState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -40,20 +41,27 @@ const subjects = [
     "Games & Challenges", "Other"
 ];
 
-const initialState = {
-    success: false,
-    error: null,
-    errors: null,
-    courseId: undefined
-};
+const CourseSchema = z.object({
+  title: z.string().min(1, 'Title cannot be empty.').max(100, 'Title must be 100 characters or less.'),
+  description: z.string().min(1, 'Description cannot be empty.').max(500, 'Description must be 500 characters or less.'),
+  subject: z.string().min(1, 'Please select a subject.'),
+  imageUrl: z.string().url('Please enter a valid URL.').optional().or(z.literal('')),
+  duration: z.string().min(1, 'Duration is required.').max(50, 'Duration must be 50 characters or less.'),
+  knowledgeCoins: z.coerce.number().min(0, 'Coins must be a positive number.'),
+  startDate: z.date({ required_error: 'A start date is required.' }),
+});
+
+type CourseFormValues = z.infer<typeof CourseSchema>;
 
 export default function CreateCoursePage() {
   const { user, firebaseUser, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [formState, formAction, isPending] = useActionState(createCourseAction, initialState);
-  
-  const form = useForm({
+  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const form = useForm<CourseFormValues>({
+    resolver: zodResolver(CourseSchema),
     defaultValues: {
       title: '',
       description: '',
@@ -65,15 +73,28 @@ export default function CreateCoursePage() {
     },
   });
 
-  useEffect(() => {
-    if (formState.success && formState.courseId) {
+  const onSubmit = async (data: CourseFormValues) => {
+    if (!firebaseUser) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
+        return;
+    }
+    
+    setIsPending(true);
+    setError(null);
+    const idToken = await firebaseUser.getIdToken();
+    const result = await createCourseAction({ ...data, idToken });
+
+    if (result.success && result.courseId) {
       toast({
         title: 'Course Created!',
         description: 'Your new course has been successfully created.',
       });
-      router.push(`/courses/${formState.courseId}`);
+      router.push(`/courses/${result.courseId}`);
+    } else {
+        setError(result.error || 'An unknown error occurred.');
     }
-  }, [formState, router, toast]);
+    setIsPending(false);
+  };
 
   if (authLoading) {
     return <p>Loading...</p>;
@@ -92,19 +113,12 @@ export default function CreateCoursePage() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form action={formAction} className="space-y-6">
-              {formState.error && (
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {error && (
                 <Alert variant="destructive">
                   <XCircle className="h-4 w-4" />
                   <AlertTitle>Error Creating Course</AlertTitle>
-                  <AlertDescription>
-                    {formState.error}
-                    {formState.errors && (
-                      <pre className="mt-2 whitespace-pre-wrap rounded-md bg-destructive/10 p-4 text-xs font-mono">
-                        {JSON.stringify(formState.errors, null, 2)}
-                      </pre>
-                    )}
-                  </AlertDescription>
+                  <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 
@@ -234,9 +248,7 @@ export default function CreateCoursePage() {
                   )}
                 />
               </div>
-              <input type="hidden" name="startDate" value={form.watch('startDate')?.toISOString() || ''} />
-              <input type="hidden" name="idToken" value={firebaseUser?.uid || ''} />
-
+              
               <Button type="submit" disabled={isPending || !firebaseUser}>
                 {isPending ? (
                   <>

@@ -1,7 +1,8 @@
 
 'use client';
-import { useEffect, useState, useActionState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,54 +26,48 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 const ChapterSchema = z.object({
   title: z.string().min(1, 'Title cannot be empty.').max(100, 'Title must be 100 characters or less.'),
   description: z.string().min(1, 'Description cannot be empty.').max(500, 'Description must be 500 characters or less.'),
-  idToken: z.string().min(1, 'Authentication token is required.'),
-  courseId: z.string().min(1, 'Course ID is required.'),
 });
 
 type ChapterFormValues = z.infer<typeof ChapterSchema>;
 
-const initialState = {
-    success: false,
-    error: null,
-    errors: null,
-    chapterId: undefined
-};
 
 export default function CreateChapterPage({ params }: { params: { id: string } }) {
   const { firebaseUser, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [formState, formAction, isPending] = useActionState(createChapterAction, initialState);
-  const formRef = useRef<HTMLFormElement>(null);
+  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const form = useForm<ChapterFormValues>({
+    resolver: zodResolver(ChapterSchema),
     defaultValues: {
       title: '',
       description: '',
-      idToken: '',
-      courseId: params.id,
     },
   });
 
-  useEffect(() => {
-    const fetchToken = async () => {
-      if (firebaseUser) {
-        const token = await firebaseUser.getIdToken();
-        form.setValue('idToken', token);
-      }
-    };
-    fetchToken();
-  }, [firebaseUser, form]);
-
-  useEffect(() => {
-    if (formState?.success && formState.chapterId) {
-      toast({
-        title: 'Chapter Created!',
-        description: 'Your new chapter has been added to the course.',
-      });
-      router.push(`/courses/${params.id}/edit`);
+  const onSubmit = async (data: ChapterFormValues) => {
+    if (!firebaseUser) {
+        toast({ variant: 'destructive', title: 'Not authenticated' });
+        return;
     }
-  }, [formState, router, toast, params]);
+    setIsPending(true);
+    setError(null);
+    const idToken = await firebaseUser.getIdToken();
+    const result = await createChapterAction({ ...data, courseId: params.id, idToken });
+
+    if (result.success) {
+        toast({
+            title: 'Chapter Created!',
+            description: 'Your new chapter has been added to the course.',
+        });
+        router.push(`/courses/${params.id}/edit`);
+    } else {
+        setError(result.error || 'An unknown error occurred.');
+    }
+    setIsPending(false);
+  };
+
 
   if (authLoading) {
     return <p>Loading...</p>;
@@ -88,27 +83,15 @@ export default function CreateChapterPage({ params }: { params: { id: string } }
         <CardContent>
           <Form {...form}>
             <form 
-              ref={formRef}
-              action={formAction}
-              onSubmit={(evt) => {
-                evt.preventDefault();
-                form.handleSubmit(() => {
-                    formRef.current?.submit();
-                })(evt);
-              }}
+              onSubmit={form.handleSubmit(onSubmit)}
               className="space-y-6"
             >
-              {formState?.error && (
+              {error && (
                 <Alert variant="destructive">
                   <XCircle className="h-4 w-4" />
                   <AlertTitle>Error Creating Chapter</AlertTitle>
                   <AlertDescription>
-                    {formState.error}
-                    {formState.errors && (
-                      <pre className="mt-2 whitespace-pre-wrap rounded-md bg-destructive/10 p-4 text-xs font-mono">
-                        {JSON.stringify(formState.errors, null, 2)}
-                      </pre>
-                    )}
+                    {error}
                   </AlertDescription>
                 </Alert>
               )}
@@ -139,10 +122,8 @@ export default function CreateChapterPage({ params }: { params: { id: string } }
                   </FormItem>
                 )}
               />
-              <input type="hidden" {...form.register('idToken')} />
-              <input type="hidden" {...form.register('courseId')} />
-
-              <Button type="submit" disabled={isPending || !form.watch('idToken')}>
+              
+              <Button type="submit" disabled={isPending || !firebaseUser}>
                 {isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

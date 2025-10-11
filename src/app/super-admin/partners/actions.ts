@@ -1,7 +1,8 @@
+
 'use server';
 
 import { z } from 'zod';
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin-new';
 import { revalidatePath } from 'next/cache';
 import type { Partner, PartnerApplication, User } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -23,10 +24,7 @@ const PartnerSchema = z.object({
 });
 
 export async function savePartnerAction(prevState: any, formData: FormData) {
-    const { db } = getFirebaseAdmin();
-    if (!db) {
-        return { success: false, error: 'Server configuration error.' };
-    }
+    const db = getAdminDb();
     
     const validatedFields = PartnerSchema.safeParse({
         id: formData.get('id') || undefined,
@@ -89,10 +87,7 @@ export async function savePartnerAction(prevState: any, formData: FormData) {
 }
 
 export async function deletePartnerAction(id: string) {
-    const { db } = getFirebaseAdmin();
-    if (!db) {
-        return { success: false, error: 'Database not initialized' };
-    }
+    const db = getAdminDb();
 
     try {
         await db.collection('partners').doc(id).delete();
@@ -105,8 +100,7 @@ export async function deletePartnerAction(id: string) {
 }
 
 export async function getPartnersAction() {
-    const { db } = await getFirebaseAdmin();
-    if (!db) return [];
+    const db = getAdminDb();
 
     try {
         const snapshot = await db.collection('partners').get();
@@ -121,8 +115,7 @@ export async function getPartnersAction() {
 }
 
 export async function getPartnerApplicationsAction(status: 'pending' | 'approved' | 'rejected'): Promise<PartnerApplication[]> {
-    const { db } = await getFirebaseAdmin();
-    if (!db) return [];
+    const db = getAdminDb();
 
     try {
         const snapshot = await db.collection('partner-applications').where('status', '==', status).orderBy('createdAt', 'desc').get();
@@ -151,10 +144,8 @@ const PartnerApplicationSchema = z.object({
 });
 
 export async function createPartnerApplicationAction(prevState: any, formData: FormData) {
-    const { auth, db } = await getFirebaseAdmin();
-    if (!db || !auth) {
-        return { success: false, error: 'Database service is unavailable.' };
-    }
+    const auth = getAdminAuth();
+    const db = getAdminDb();
     
     const validatedFields = PartnerApplicationSchema.safeParse({
         entityName: formData.get('entityName'),
@@ -205,10 +196,7 @@ export async function createPartnerApplicationAction(prevState: any, formData: F
 }
 
 export async function approvePartnerApplicationAction(applicationId: string, userId: string) {
-    const { db } = await getFirebaseAdmin();
-    if (!db) {
-        return { success: false, error: 'Database not initialized' };
-    }
+    const db = getAdminDb();
     
     const appRef = db.doc(`partner-applications/${applicationId}`);
     const userProfileCollectionRef = db.collection(`users/${userId}/profile`);
@@ -235,7 +223,6 @@ export async function approvePartnerApplicationAction(applicationId: string, use
             }
         };
         
-        // This transaction ensures all or nothing succeeds
         const newPartner = await db.runTransaction(async (transaction) => {
             const userProfileSnapshot = await transaction.get(userProfileCollectionRef.limit(1));
             
@@ -244,16 +231,13 @@ export async function approvePartnerApplicationAction(applicationId: string, use
             }
             const userProfileDocRef = userProfileSnapshot.docs[0].ref;
             
-            // Create the new partner document and get its reference
             const newPartnerRef = db.collection('partners').doc();
             transaction.set(newPartnerRef, newPartnerData);
 
-            // Update user's profile with the new partner ID
             transaction.update(userProfileDocRef, {
                 partnerId: newPartnerRef.id,
             });
 
-            // Update the application status
             transaction.update(appRef, {
                 status: 'approved',
             });
@@ -274,10 +258,7 @@ export async function approvePartnerApplicationAction(applicationId: string, use
 }
 
 export async function rejectPartnerApplicationAction(applicationId: string) {
-    const { db } = await getFirebaseAdmin();
-    if (!db) {
-        return { success: false, error: 'Database not initialized' };
-    }
+    const db = getAdminDb();
 
     try {
         await db.doc(`partner-applications/${applicationId}`).update({ status: 'rejected' });

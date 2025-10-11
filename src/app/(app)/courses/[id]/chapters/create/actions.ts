@@ -2,7 +2,7 @@
 'use server';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin-new';
 import { FieldValue } from 'firebase-admin/firestore';
 
 const ChapterSchema = z.object({
@@ -17,33 +17,16 @@ type ChapterFormValues = z.infer<typeof ChapterSchema>;
 type ActionResult = {
   success: boolean;
   error?: string | null;
-  errors?: Record<string, string[]> | null;
   chapterId?: string;
 };
 
-export async function createChapterAction(prevState: any, data: ChapterFormValues): Promise<ActionResult> {
-  const { auth, db } = getFirebaseAdmin();
-
-  if (!auth || !db) {
-    return {
-      success: false,
-      error: 'Firebase Admin SDK not initialized. Please check server configuration.',
-    };
-  }
-
-  const validatedFields = ChapterSchema.safeParse(data);
-
-  if (!validatedFields.success) {
-    return {
-      success: false,
-      error: 'Invalid form data.',
-      errors: validatedFields.error.flatten().fieldErrors,
-    };
-  }
-
-  const { idToken, courseId, ...chapterData } = validatedFields.data;
+export async function createChapterAction(data: ChapterFormValues): Promise<ActionResult> {
+  const auth = getAdminAuth();
+  const db = getAdminDb();
 
   try {
+    const { idToken, courseId, ...chapterData } = data;
+
     const decodedToken = await auth.verifyIdToken(idToken);
     const uid = decodedToken.uid;
 
