@@ -1,343 +1,95 @@
-/**
- * @fileoverview Firestore Security Rules for the platform.
- *
- * Core Philosophy:
- * This ruleset prioritizes a secure, owner-centric model for user data while
- * allowing public read access to certain collections like courses and posts.
- * All write operations are carefully guarded by authentication and authorization checks.
- *
- * Data Structure:
- * - User-specific data (profile, enrollments, transactions, coupons, quest progress) is nested under /users/{userId}.
- * - Public data (courses, posts, study rooms, contests, partners) is stored in top-level collections.
- * - Application-wide settings (economy, subscription plans, coin bundles) are stored under /app-settings.
- * - Chat data is stored in /chats and /chats/{chatId}/messages for private and group conversations.
- *
- * Key Security Decisions:
- * - User data is strictly controlled by the owning user.
- * - Public collections are readable by all, but writes are restricted.
- * - Chat access is restricted to participants listed in the chat document.
- * - Partner data is publicly readable, but creation and modification are limited.
- * - The rules do NOT enforce strong data validation for rapid prototyping.
- *
- * Denormalization for Authorization:
- * - No external data lookups are performed in rules. Authorization decisions are made based only on the current
- *   document and the authenticated user's ID.
- *
- * Structural Segregation:
- * - Public content and private user data are stored in separate collections to simplify access control and
- *   improve query performance.
- */
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Checks if the user is signed in.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Authentication is required for protected resources.
-     */
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
-
-    /**
-     * @description Checks if the authenticated user's ID matches the provided user ID.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Enforces user ownership of data.
-     */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+    function isSuperAdmin() {
+        return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)/profile/$(request.auth.uid)).data.isSuperAdmin == true;
+    }
+    function isOwner(uid) {
+        return isSignedIn() && request.auth.uid == uid;
     }
 
-    /**
-     * @description Checks if the authenticated user's ID matches the provided user ID and resource exists.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Enforces user ownership of data and resource existence.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+    // App Settings - Only Admins can write
+    match /app-settings/{document=**} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
     }
-
-    /**
-     * @description Controls access to chats.
-     * @path /chats/{chatId}
-     * @allow (get, list) Authenticated users can read chats where they are participants.
-     * @allow (create) Authenticated users can create chats, provided their UID is in participants.
-     * @allow (update, delete) Only participants can modify or delete chats.
-     * @principle Restricts chat access to participants.
-     */
-    match /chats/{chatId} {
-      allow get, list: if isSignedIn() && request.auth.uid in resource.data.participants;
-      allow create: if isSignedIn() && request.auth.uid in request.resource.data.participants;
-      allow update, delete: if isExistingOwner(request.auth.uid) && request.auth.uid in resource.data.participants;
-      
-      /**
-       * @description Controls access to chat messages.
-       * @path /chats/{chatId}/messages/{messageId}
-       * @allow (get, list) Participants of the parent chat can read messages.
-       * @allow (create) Participants can create messages.
-       * @allow (update, delete) Only the message author can modify or delete their messages.
-       * @principle Restricts message access to chat participants and authors.
-       */
-      match /messages/{messageId} {
-        allow get, list: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
-        allow create: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
-        allow update, delete: if isSignedIn() && request.auth.uid == resource.data.authorUid && resource != null;
-      }
-    }
-
-    /**
-     * @description Grants read access to app settings.
-     * @path /app-settings/economy
-     * @allow (get, list) Any user can read app settings.
-     * @deny (create, update, delete) No user can modify app settings through client SDKs.
-     * @principle Public read access with restricted writes.
-     */
-    match /app-settings/economy {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Grants read access to subscription plans.
-     * @path /app-settings/monetization/subscription-plans/{planId}
-     * @allow (get, list) Any user can read subscription plans.
-     * @deny (create, update, delete) No user can modify subscription plans through client SDKs.
-     * @principle Public read access with restricted writes.
-     */
-    match /app-settings/monetization/subscription-plans/{planId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Grants read access to coin bundles.
-     * @path /app-settings/monetization/coin-bundles/{bundleId}
-     * @allow (get, list) Any user can read coin bundles.
-     * @deny (create, update, delete) No user can modify coin bundles through client SDKs.
-     * @principle Public read access with restricted writes.
-     */
-    match /app-settings/monetization/coin-bundles/{bundleId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Grants read access to quests.
-     * @path /quests/{questId}
-     * @allow (get, list) Any user can read quests.
-     * @deny (create, update, delete) No user can modify quests through client SDKs.
-     * @principle Public read access with restricted writes.
-     */
+    
+    // Quests - Only Admins can write
     match /quests/{questId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+        allow read: if true;
+        allow write: if isSuperAdmin();
     }
-
-    /**
-     * @description Grants read access to courses.
-     * @path /courses/{courseId}
-     * @allow (get, list) Any user can read courses.
-     * @deny (create, update, delete) No user can modify courses through client SDKs.
-     * @principle Public read access with restricted writes.
-     */
+    
+    // Courses
     match /courses/{courseId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+        allow read: if true;
+        allow write: if isSuperAdmin() || (isSignedIn() && resource.data.instructorId == request.auth.uid);
+
+        // Course chapters and lessons
+         match /chapters/{chapterId} {
+            allow read: if true;
+            allow write: if isSuperAdmin() || (isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.instructorId == request.auth.uid);
+            
+             match /lessons/{lessonId} {
+                allow read: if true;
+                allow write: if isSuperAdmin() || (isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.instructorId == request.auth.uid);
+            }
+        }
     }
 
-    /**
-     * @description Grants read access to chapters within a course.
-     * @path /courses/{courseId}/chapters/{chapterId}
-     * @allow (get, list) Any user can read chapters.
-     * @deny (create, update, delete) No user can modify chapters through client SDKs.
-     * @principle Public read access with restricted writes.
-     */
-    match /courses/{courseId}/chapters/{chapterId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+    // User data
+    match /users/{uid}/{document=**} {
+      allow read, write: if isOwner(uid);
     }
-
-    /**
-     * @description Grants read access to lessons within a chapter.
-     * @path /courses/{courseId}/chapters/{chapterId}/lessons/{lessonId}
-     * @allow (get, list) Any user can read lessons.
-     * @deny (create, update, delete) No user can modify lessons through client SDKs.
-     * @principle Public read access with restricted writes.
-     */
-    match /courses/{courseId}/chapters/{chapterId}/lessons/{lessonId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+    match /users/{uid}/profile/{profileId} {
+        allow read: if true;
+        allow write: if isOwner(uid);
     }
-
-    /**
-     * @description Controls access to user profile information.
-     * @path /users/{userId}/profile/{profileId}
-     * @allow (get, list) Any user can read profile data.
-     * @allow (create, update, delete) Only the owner can modify their profile.
-     * @deny (create) if the userId in the path does not match the id in the request.resource.data.
-     * @principle Enforces document ownership for writes.
-     */
-    match /users/{userId}/profile/{profileId} {
-      allow get, list: if true;
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to user course enrollments.
-     * @path /users/{userId}/enrollments/{courseId}
-     * @allow (get, list) Only the owner can read their enrollments.
-     * @allow (create, update, delete) Only the owner can manage their enrollments.
-     * @deny (create) if the userId in the path does not match the userId who is attempting the create operation.
-     * @principle Enforces document ownership for writes.
-     */
-    match /users/{userId}/enrollments/{courseId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to user quest progress.
-     * @path /users/{userId}/quest-progress/main
-     * @allow (get, list) Only the owner can read their quest progress.
-     * @allow (create, update, delete) Only the owner can manage their quest progress.
-     * @deny (create) if the userId in the path does not match the userId who is attempting the create operation.
-     * @principle Enforces document ownership for writes.
-     */
-    match /users/{userId}/quest-progress/main {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Grants read access to posts.
-     * @path /posts/{postId}
-     * @allow (get, list) Any user can read posts.
-     * @allow (create) Any signed-in user can create a post, provided the author.uid matches request.auth.uid.
-     * @allow (update, delete) Only the author can modify a post.
-     * @principle Public read access with owner-only writes, enforces author consistency on create.
-     */
+    
+    // Posts - All signed in users can create, only owners or admins can delete
     match /posts/{postId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.author.uid == request.auth.uid;
-      allow update: if isSignedIn() && resource.data.author.uid == request.auth.uid && resource != null;
-      allow delete: if isSignedIn() && resource.data.author.uid == request.auth.uid && resource != null;
+        allow read: if true;
+        allow create: if isSignedIn();
+        allow update: if isSignedIn() && resource.data.authorUid == request.auth.uid;
+        allow delete: if isSuperAdmin() || (isSignedIn() && resource.data.authorUid == request.auth.uid);
     }
 
-    /**
-     * @description Controls access to user transactions.
-     * @path /users/{userId}/transactions/{transactionId}
-     * @allow (get, list) Only the owner can read their transactions.
-     * @allow (create, update, delete) Only the owner can manage their transactions.
-     * @deny (create) if the userId in the path does not match the userId who is attempting the create operation.
-     * @principle Enforces document ownership for writes.
-     */
-    match /users/{userId}/transactions/{transactionId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Grants read access to study rooms.
-     * @path /study-rooms/{roomId}
-     * @allow (get, list) Any user can read study rooms.
-     * @deny (create, update, delete) No user can modify study rooms through client SDKs.
-     * @principle Public read access with restricted writes.
-     */
+    // Study Rooms
     match /study-rooms/{roomId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+        allow read: if true;
+        allow create: if isSignedIn();
+        allow update: if isSignedIn() && resource.data.hostId == request.auth.uid;
+        allow delete: if isSuperAdmin() || (isSignedIn() && resource.data.hostId == request.auth.uid);
     }
-
-    /**
-     * @description Grants read access to contests.
-     * @path /contests/{contestId}
-     * @allow (get, list) Any user can read contests.
-     * @deny (create, update, delete) No user can modify contests through client SDKs.
-     * @principle Public read access with restricted writes.
-     */
+    
+    // Contests - Only admins can write
     match /contests/{contestId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+        allow read: if true;
+        allow write: if isSuperAdmin();
     }
 
-    /**
-     * @description Controls access to user coupons.
-     * @path /users/{userId}/coupons/{couponId}
-     * @allow (get, list) Only the owner can read their coupons.
-     * @allow (create, update, delete) Only the owner can manage their coupons.
-     * @deny (create) if the userId in the path does not match the userId who is attempting the create operation.
-     * @principle Enforces document ownership for writes.
-     */
-    match /users/{userId}/coupons/{couponId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Grants read access to partner data.
-     * @path /partners/{partnerId}
-     * @allow (get, list) Any user can read partner data.
-     * @deny (create, update, delete) No user can modify partner data through client SDKs.
-     * @principle Public read access with restricted writes.
-     */
+    // Partners
     match /partners/{partnerId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+        allow read: if true;
+        allow write: if isSuperAdmin() || (isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)/profile/$(request.auth.uid)).data.partnerId == partnerId);
+    }
+    
+     match /partners/{partnerId}/{collection}/{docId} {
+        allow read: if true;
+        allow write: if isSuperAdmin() || (isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)/profile/$(request.auth.uid)).data.partnerId == partnerId);
     }
 
-    /**
-     * @description Grants read access to courses offered by a specific partner.
-     * @path /partners/{partnerId}/courses/{courseId}
-     * @allow (get, list) Any user can read partner courses.
-     * @deny (create, update, delete) No user can modify partner courses through client SDKs.
-     * @principle Public read access with restricted writes.
-     */
-    match /partners/{partnerId}/courses/{courseId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Grants read access to products offered by a specific partner.
-     * @path /partners/{partnerId}/products/{productId}
-     * @allow (get, list) Any user can read partner products.
-     * @deny (create, update, delete) No user can modify partner products through client SDKs.
-     * @principle Public read access with restricted writes.
-     */
-    match /partners/{partnerId}/products/{productId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Controls access to partner applications.
-     * @path /partner-applications/{applicationId}
-     * @allow get, list: if false;
-     * @allow create: if isSignedIn();
-     * @allow update, delete: if false;
-     * @principle Only signed-in users can create partner applications.
-     */
+    // Partner Applications - Users can only create for themselves, Admins can read/write all
     match /partner-applications/{applicationId} {
-      allow get, list: if false;
-      allow create: if isSignedIn();
-      allow update, delete: if false;
+        allow read: if isSuperAdmin();
+        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if isSuperAdmin();
     }
   }
 }

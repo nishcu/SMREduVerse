@@ -140,53 +140,27 @@ const PartnerApplicationSchema = z.object({
     contactName: z.string().min(1, 'Contact name is required'),
     contactEmail: z.string().email('A valid email is required'),
     contactMobile: z.string().min(10, 'A valid mobile number is required'),
-    idToken: z.string().min(1, 'Authentication token is required.'),
+    userId: z.string().min(1, 'User ID is required.'),
 });
 
-export async function createPartnerApplicationAction(prevState: any, formData: FormData) {
-    const auth = getAdminAuth();
+export async function createPartnerApplicationAction(data: z.infer<typeof PartnerApplicationSchema>) {
     const db = getAdminDb();
     
-    const validatedFields = PartnerApplicationSchema.safeParse({
-        entityName: formData.get('entityName'),
-        entityType: formData.get('entityType'),
-        areaOfExpertise: formData.get('areaOfExpertise'),
-        contactName: formData.get('contactName'),
-        contactEmail: formData.get('contactEmail'),
-        contactMobile: formData.get('contactMobile'),
-        idToken: formData.get('idToken'),
-    });
-
-    if (!validatedFields.success) {
-        return { 
-            success: false, 
-            error: 'Invalid data. Please check your inputs.',
-            errors: validatedFields.error.flatten().fieldErrors,
-        };
-    }
-    
-    const { idToken, ...applicationData } = validatedFields.data;
-    
     try {
-        const decodedToken = await auth.verifyIdToken(idToken);
-        const uid = decodedToken.uid;
-        
         const payload = {
-            ...applicationData,
-            userId: uid,
-            status: 'pending',
+            ...data,
+            status: 'pending' as const,
             createdAt: FieldValue.serverTimestamp(),
         };
         const appRef = await db.collection('partner-applications').add(payload);
         
-        const userProfileCollectionRef = db.collection(`users/${uid}/profile`);
+        const userProfileCollectionRef = db.collection(`users/${data.userId}/profile`);
         const userProfileSnapshot = await userProfileCollectionRef.limit(1).get();
         
         if (!userProfileSnapshot.empty) {
             const userProfileDocRef = userProfileSnapshot.docs[0].ref;
             await userProfileDocRef.set({ partnerApplicationId: appRef.id }, { merge: true });
         }
-
 
         revalidatePath('/super-admin/partners');
         return { success: true, error: null, errors: null };

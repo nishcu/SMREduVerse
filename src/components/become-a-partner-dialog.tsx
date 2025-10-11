@@ -1,6 +1,7 @@
 'use client';
 
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
   Dialog,
@@ -28,10 +29,11 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect, useActionState } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { createPartnerApplicationAction } from '@/app/super-admin/partners/actions';
 import { useAuth } from '@/hooks/use-auth';
+import { db } from '@/lib/firebase';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 const PartnerApplicationSchema = z.object({
   entityName: z.string().min(2, 'Please enter the name of your entity.'),
@@ -42,7 +44,6 @@ const PartnerApplicationSchema = z.object({
   contactName: z.string().min(2, 'Please enter your name.'),
   contactEmail: z.string().email('Please enter a valid email address.'),
   contactMobile: z.string().min(10, 'Please enter a valid mobile number.'),
-  idToken: z.string().min(1, 'idToken is required'),
 });
 
 type ApplicationFormValues = z.infer<typeof PartnerApplicationSchema>;
@@ -52,55 +53,57 @@ interface BecomeAPartnerDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const initialState = { success: false, error: null, errors: null };
-
 export function BecomeAPartnerDialog({
   isOpen,
   onOpenChange,
 }: BecomeAPartnerDialogProps) {
-  const [state, formAction, isPending] = useActionState(
-    createPartnerApplicationAction,
-    initialState
-  );
   const { toast } = useToast();
-  const { firebaseUser } = useAuth();
+  const { user } = useAuth();
+  const [isPending, setIsPending] = useState(false);
 
   const form = useForm<ApplicationFormValues>({
+    resolver: zodResolver(PartnerApplicationSchema),
     defaultValues: {
       entityName: '',
       areaOfExpertise: '',
       contactName: '',
       contactEmail: '',
       contactMobile: '',
-      idToken: '',
     },
   });
 
-  useEffect(() => {
-    if (firebaseUser) {
-      firebaseUser.getIdToken().then((token) => {
-        form.setValue('idToken', token);
-      });
-    }
-  }, [firebaseUser, form]);
+  const onSubmit = async (data: ApplicationFormValues) => {
+      if (!user) {
+          toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to submit an application.' });
+          return;
+      }
 
-  useEffect(() => {
-    if (state.success) {
-      toast({
-        title: 'Application Submitted!',
-        description:
-          'Thank you for your interest. We will review your application and get back to you soon.',
-      });
-      onOpenChange(false);
-      form.reset();
-    } else if (state.error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: state.error,
-      });
-    }
-  }, [state, onOpenChange, form, toast]);
+      setIsPending(true);
+      try {
+          await addDoc(collection(db, 'partner-applications'), {
+              ...data,
+              userId: user.id,
+              status: 'pending',
+              createdAt: serverTimestamp(),
+          });
+
+          toast({
+              title: 'Application Submitted!',
+              description: 'Thank you for your interest. We will review your application and get back to you soon.',
+          });
+          onOpenChange(false);
+          form.reset();
+      } catch (error: any) {
+          toast({
+              variant: 'destructive',
+              title: 'Submission Error',
+              description: error.message || 'An unknown error occurred.',
+          });
+      } finally {
+          setIsPending(false);
+      }
+  };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -114,7 +117,7 @@ export function BecomeAPartnerDialog({
 
         <Form {...form}>
           <form
-            action={formAction}
+            onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-4 max-h-[70vh] overflow-y-auto pr-2"
           >
             <FormField
@@ -143,7 +146,6 @@ export function BecomeAPartnerDialog({
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
-                    name={field.name}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -237,8 +239,6 @@ export function BecomeAPartnerDialog({
               />
             </div>
 
-            <input type="hidden" {...form.register('idToken')} />
-
             <DialogFooter className="sticky bottom-0 bg-background py-4 -mx-6 px-6">
               <Button
                 type="button"
@@ -251,8 +251,7 @@ export function BecomeAPartnerDialog({
               <Button
                 type="submit"
                 disabled={
-                  isPending ||
-                  !form.watch('idToken')
+                  isPending || !user
                 }
               >
                 {isPending && (
