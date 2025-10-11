@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -73,11 +74,19 @@ export function BecomeAPartnerDialog({
   });
 
   const onSubmit = async (data: ApplicationFormValues) => {
-      if (!user) {
-          toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to submit an application.' });
-          return;
+    if (!user || !user.id) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'User authentication is incomplete. Please log in again.',
+      });
+      console.warn('Blocked submission: missing user or user.id');
+      return;
       }
 
+      console.log('Submitting application for user:', user.id);
+      console.log('Form data:', data);
+      
       setIsPending(true);
       try {
           const appRef = await addDoc(collection(db, 'partner-applications'), {
@@ -94,7 +103,9 @@ export function BecomeAPartnerDialog({
               title: 'Application Submitted!',
               description: 'Thank you for your interest. We will review your application and get back to you soon.',
           });
-          onOpenChange(false);
+          setTimeout(() => {
+            onOpenChange(false);
+          }, 500);
           form.reset();
       } catch (error: any) {
           toast({
