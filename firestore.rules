@@ -3,107 +3,105 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
-    function isOwner(uid) {
-      return request.auth != null && request.auth.uid == uid;
-    }
-
-    function isExistingOwner(uid) {
-      return isOwner(uid) && resource.data.id == uid;
-    }
-
-    function isAuthenticated() {
+    // Helper Functions
+    function isSignedIn() {
       return request.auth != null;
     }
 
-    // App Settings: Admins should manage this, but for now allow authenticated read
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+    
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)/profile/$(request.auth.uid)).data.isSuperAdmin;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && getRole() == true;
+    }
+
+    // === App Settings (Read-only for users) ===
     match /app-settings/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if false; // Protect settings
-    }
-    
-    // Users: Public profile is readable, but only owner can write.
-    match /users/{uid} {
-      allow read, write: if isOwner(uid);
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
     }
 
-    match /users/{uid}/profile/{profileId} {
-      allow get: if isAuthenticated();
-      allow list, create, update, delete: if isOwner(uid);
-    }
-    
-    // User-specific subcollections can only be accessed by the owner
-    match /users/{uid}/{collection}/{docId} {
-      allow read, write: if isOwner(uid);
-    }
-
-    // Public Collections: Readable by any authenticated user
-    match /courses/{courseId} {
-      allow read: if isAuthenticated();
-      // Only the instructor can create/update the course
-      allow write: if isAuthenticated() && request.auth.uid == resource.data.instructorId;
-      
-      match /chapters/{chapterId} {
-        allow read: if isAuthenticated();
-        // Check instructorId on the parent course for chapter writes
-        allow write: if isAuthenticated() && get(/databases/$(database)/documents/courses/$(courseId)).data.instructorId == request.auth.uid;
-        
-        match /lessons/{lessonId} {
-           allow read: if isAuthenticated();
-           allow write: if isAuthenticated() && get(/databases/$(database)/documents/courses/$(courseId)).data.instructorId == request.auth.uid;
-        }
-      }
-    }
-
-    match /posts/{postId} {
-      allow read: if isAuthenticated();
-      // Allow create for any authenticated user
-      allow create: if isAuthenticated() && request.resource.data.authorUid == request.auth.uid;
-      // Allow update/delete only for the post author
-      allow update, delete: if isAuthenticated() && resource.data.authorUid == request.auth.uid;
-    }
-    
+    // === Public Content (Read for users, Write for admins/owners) ===
     match /quests/{questId} {
-      allow read: if isAuthenticated();
-      allow write: if false; // Should be managed by admins
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
+    
+    match /contests/{contestId} {
+        allow read: if isSignedIn();
+        allow write: if isSuperAdmin() || (resource.data.partnerId != null && isOwner(get(/databases/$(database)/documents/partners/$(resource.data.partnerId)).data.ownerId));
+    }
+    
+    match /partners/{partnerId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
+    
+    match /partners/{partnerId}/{collection}/{docId} {
+        allow read: if isSignedIn();
+        allow write: if isSuperAdmin();
+    }
+    
+    match /partner-applications/{applicationId} {
+      // Users can only create applications for themselves. Admins can read/update.
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read, update: if isSuperAdmin();
     }
     
     match /study-rooms/{roomId} {
-        allow read: if isAuthenticated();
-        allow create: if isAuthenticated() && request.resource.data.hostId == request.auth.uid;
-        allow update: if isAuthenticated() && resource.data.hostId == request.auth.uid;
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.hostId == request.auth.uid;
+        allow update: if isSignedIn() && resource.data.hostId == request.auth.uid;
+    }
+    
+    match /posts/{postId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.author.uid == request.auth.uid;
+        allow update, delete: if isSignedIn() && (resource.data.author.uid == request.auth.uid || isSuperAdmin());
     }
 
-    match /contests/{contestId} {
-        allow read: if isAuthenticated();
-        allow write: if false; // Should be managed by admins
-    }
+    match /courses/{courseId} {
+      allow read: if isSignedIn();
+      // Allow create/update only by the instructor or a super admin
+      allow create, update: if isSignedIn() && (request.resource.data.instructorId == request.auth.uid || isSuperAdmin());
 
-    // Partners: Publicly readable
-    match /partners/{partnerId} {
-      allow read: if isAuthenticated();
-      allow write: if false; // Should be managed by admins
-
-      match /{collection}/{docId} {
-        allow read: if isAuthenticated();
-        allow write: if false; // Should be managed by admins
+      match /chapters/{chapterId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && (get(/databases/$(database)/documents/courses/$(courseId)).data.instructorId == request.auth.uid || isSuperAdmin());
+        
+        match /lessons/{lessonId} {
+            allow read: if isSignedIn();
+            allow write: if isSignedIn() && (get(/databases/$(database)/documents/courses/$(courseId)).data.instructorId == request.auth.uid || isSuperAdmin());
+        }
       }
     }
     
-    // Partner Applications: Users can create their own application
-    match /partner-applications/{applicationId} {
-        allow read: if isAuthenticated(); // Allow admins/users to read applications
-        allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-        allow update, delete: if false; // Managed by backend/admins
+    // === User-Specific Data (Only owner can access) ===
+    match /users/{uid}/{document=**} {
+      allow read, write: if isOwner(uid);
     }
     
-     // Chat: Participants can read/write messages
+    // Allow admins to read user profiles for moderation
+    match /users/{uid}/profile/{profileId} {
+      allow get: if isSignedIn(); // Allow any signed in user to get a profile
+      allow list: if isOwner(uid) || isSuperAdmin();
+      allow create: if isOwner(uid) && request.resource.data.id == uid;
+      allow update: if isOwner(uid);
+      allow delete: if isOwner(uid) || isSuperAdmin();
+    }
+    
+    // Chats are special: participants can read/write messages
     match /chats/{chatId} {
-      allow read, update: if isAuthenticated() && request.auth.uid in resource.data.participants;
-      allow create: if isAuthenticated() && request.auth.uid in request.resource.data.participants;
+      allow read, update: if isSignedIn() && request.auth.uid in resource.data.participants;
+      allow create: if isSignedIn() && request.auth.uid in request.resource.data.participants;
       
       match /messages/{messageId} {
-        allow read, create: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        allow read, create: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
       }
     }
   }
