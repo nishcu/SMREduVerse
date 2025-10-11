@@ -22,7 +22,7 @@ import { type Quest, type UserQuestProgress } from '@/lib/types';
 import * as LucideIcons from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { completeQuestAction, resetProgressAction } from './actions';
-import { useTransition, useMemo, useEffect } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useCollection, useDoc } from '@/firebase';
 import { useActionState } from 'react';
@@ -83,10 +83,11 @@ function QuestCard({ quest, isCompleted, onComplete, isPending }: { quest: Quest
 export default function BrainQuestPage() {
   const { firebaseUser } = useAuth();
   const { toast } = useToast();
-  const [completeQuestState, completeQuestFormAction, isCompleteQuestPending] = useActionState(completeQuestAction, { success: false });
-  const [isResetProgressPending, startResetTransition] = useTransition();
   
-  const isPending = isCompleteQuestPending || isResetProgressPending;
+  const [completeQuestState, completeQuestFormAction, isCompleteQuestPending] = useActionState(completeQuestAction, { success: false });
+  const [resetState, resetFormAction, isResetPending] = useActionState(resetProgressAction, { success: false });
+  
+  const isPending = isCompleteQuestPending || isResetPending;
 
   const questsQuery = useMemo(() => collection(db, 'quests'), []);
   const { data: quests, loading: loadingQuests, error: errorQuests } = useCollection<Quest>(questsQuery);
@@ -106,19 +107,6 @@ export default function BrainQuestPage() {
     
     completeQuestFormAction(formData);
   }
-
-  const handleResetProgress = async () => {
-    if (!firebaseUser) return;
-    startResetTransition(async () => {
-      const idToken = await firebaseUser.getIdToken();
-      const result = await resetProgressAction(idToken);
-      if (result.success) {
-        toast({ title: 'Progress Reset!', description: 'Your quest adventure begins anew.' });
-      } else {
-        toast({ variant: 'destructive', title: 'Error', description: result.error });
-      }
-    });
-  }
   
   useEffect(() => {
     if (completeQuestState?.success) {
@@ -127,6 +115,14 @@ export default function BrainQuestPage() {
        toast({ variant: 'destructive', title: 'Error', description: completeQuestState.error });
     }
   }, [completeQuestState, toast]);
+
+  useEffect(() => {
+    if (resetState?.success) {
+        toast({ title: 'Progress Reset!', description: 'Your quest adventure begins anew.' });
+    } else if (resetState?.error) {
+        toast({ variant: 'destructive', title: 'Error', description: resetState.error });
+    }
+  }, [resetState, toast]);
 
   const isLoading = loadingQuests || loadingProgress;
   const error = errorQuests || errorProgress;
@@ -142,7 +138,10 @@ export default function BrainQuestPage() {
             Explore the world of knowledge and complete quests to earn rewards.
           </p>
         </div>
-        <Button onClick={handleResetProgress} variant="outline" disabled={isPending}>Reset Progress</Button>
+        <form action={resetFormAction}>
+            <input type="hidden" name="idToken" value={firebaseUser?.uid || ''} />
+            <Button type="submit" variant="outline" disabled={isPending || !firebaseUser}>Reset Progress</Button>
+        </form>
       </div>
 
       {error && (

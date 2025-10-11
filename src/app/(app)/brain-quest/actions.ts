@@ -45,12 +45,13 @@ export async function completeQuestAction(prevState: any, formData: FormData) {
   }
 }
 
-export async function resetProgressAction(idToken: string) {
+export async function resetProgressAction(prevState: any, formData: FormData) {
     const { auth, db } = getFirebaseAdmin();
     if (!auth || !db) {
       return { success: false, error: 'Server configuration error.' };
     }
   
+    const idToken = formData.get('idToken') as string;
     if (!idToken) {
         return { success: false, error: 'Authentication token is missing.' };
     }
