@@ -1,7 +1,8 @@
+
 'use server';
 
 import { z } from 'zod';
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminDb } from '@/lib/firebase-admin-new';
 import { revalidatePath } from 'next/cache';
 import { Timestamp } from 'firebase-admin/firestore';
 import type { Contest } from '@/lib/types';
@@ -21,10 +22,7 @@ const ContestSchema = z.object({
 
 
 export async function saveContestAction(prevState: any, formData: FormData) {
-    const { db } = getFirebaseAdmin();
-    if (!db) {
-        return { success: false, error: 'Database not initialized' };
-    }
+    const db = getAdminDb();
 
     const id = formData.get('id') as string | null;
 
@@ -69,10 +67,7 @@ export async function saveContestAction(prevState: any, formData: FormData) {
 }
 
 export async function deleteContestAction(id: string) {
-    const { db } = getFirebaseAdmin();
-    if (!db) {
-        return { success: false, error: 'Database not initialized' };
-    }
+    const db = getAdminDb();
 
     try {
         await db.collection('contests').doc(id).delete();
@@ -85,8 +80,7 @@ export async function deleteContestAction(id: string) {
 }
 
 export async function getContestsAction() {
-    const { db } = getFirebaseAdmin();
-    if (!db) return [];
+    const db = getAdminDb();
 
     try {
         const snapshot = await db.collection('contests').orderBy('startDate', 'desc').get();
