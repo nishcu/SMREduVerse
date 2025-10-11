@@ -1,4 +1,3 @@
-
 import 'dotenv/config';
 import * as admin from 'firebase-admin';
 
@@ -7,17 +6,17 @@ function getFirebaseAdmin() {
     return admin.app();
   }
 
-  try {
-    const serviceAccount = {
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-    };
+  const serviceAccount: admin.ServiceAccount = {
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+  };
 
-    if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
-      throw new Error('Firebase admin environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) are not set.');
-    }
-    
+  if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
+    throw new Error('Firebase admin environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) are not set.');
+  }
+
+  try {
     return admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     });
@@ -28,6 +27,15 @@ function getFirebaseAdmin() {
   }
 }
 
-export const getAdminDb = () => admin.firestore(getFirebaseAdmin());
-export const getAdminAuth = () => admin.auth(getFirebaseAdmin());
-export const getAdminStorage = () => admin.storage(getFirebaseAdmin());
+export const getAdminDb = () => {
+    const app = getFirebaseAdmin();
+    return admin.firestore(app);
+};
+export const getAdminAuth = () => {
+    const app = getFirebaseAdmin();
+    return admin.auth(app);
+};
+export const getAdminStorage = () => {
+    const app = getFirebaseAdmin();
+    return admin.storage(app);
+};

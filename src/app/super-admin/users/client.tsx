@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useMemo, useTransition, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -22,15 +22,44 @@ import { Badge } from '@/components/ui/badge';
 import type { User } from '@/lib/types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { getInitials } from '@/lib/utils';
-import { updateUserAdminStatusAction } from './actions';
+import { getUsersAction, updateUserAdminStatusAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export function UserManagementClient({ initialUsers }: { initialUsers: User[] }) {
-    const [users, setUsers] = useState<User[]>(initialUsers);
+function UserTableSkeleton() {
+    return (
+        <div className="space-y-2">
+            {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center space-x-4 p-2">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+export function UserManagementClient({ initialUsers: serverUsers }: { initialUsers: User[] }) {
+    const [users, setUsers] = useState<User[]>(serverUsers);
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
+    const [isLoading, setIsLoading] = useState(serverUsers.length === 0);
+
+     useEffect(() => {
+        const fetchUsers = async () => {
+            const usersData = await getUsersAction();
+            setUsers(usersData);
+            setIsLoading(false);
+        };
+        if (serverUsers.length === 0) {
+            fetchUsers();
+        }
+    }, [serverUsers]);
 
     const filteredUsers = useMemo(() =>
         users.filter(user =>
@@ -94,62 +123,66 @@ export function UserManagementClient({ initialUsers }: { initialUsers: User[] })
                     Download CSV
                 </Button>
             </div>
-            <div className="rounded-md border">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>User</TableHead>
-                            <TableHead>Role</TableHead>
-                            <TableHead>Joined</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredUsers.map((user) => (
-                            <TableRow key={user.id}>
-                                <TableCell>
-                                    <div className="flex items-center gap-3">
-                                        <Avatar>
-                                            <AvatarImage src={user.avatarUrl} alt={user.name} />
-                                            <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <p className="font-medium">{user.name}</p>
-                                            <p className="text-xs text-muted-foreground">{user.email}</p>
-                                        </div>
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    <Badge variant={user.isSuperAdmin ? 'default' : 'secondary'}>
-                                        {user.isSuperAdmin ? 'Super Admin' : 'User'}
-                                    </Badge>
-                                </TableCell>
-                                <TableCell>
-                                    <div className="flex flex-col">
-                                        <span>{format(new Date(user.createdAt), 'PP')}</span>
-                                        <span className="text-xs text-muted-foreground">
-                                            ({formatDistanceToNow(new Date(user.createdAt), { addSuffix: true })})
-                                        </span>
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent>
-                                            <DropdownMenuItem asChild><Link href={`/profile/${user.id}`}>View Profile</Link></DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleToggleAdmin(user)} disabled={isPending}>
-                                                {user.isSuperAdmin ? 'Revoke Admin' : 'Make Admin'}
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </TableCell>
+             {isLoading ? (
+                <UserTableSkeleton />
+             ) : (
+                <div className="rounded-md border">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>User</TableHead>
+                                <TableHead>Role</TableHead>
+                                <TableHead>Joined</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </div>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredUsers.map((user) => (
+                                <TableRow key={user.id}>
+                                    <TableCell>
+                                        <div className="flex items-center gap-3">
+                                            <Avatar>
+                                                <AvatarImage src={user.avatarUrl} alt={user.name} />
+                                                <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-medium">{user.name}</p>
+                                                <p className="text-xs text-muted-foreground">{user.email}</p>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant={user.isSuperAdmin ? 'default' : 'secondary'}>
+                                            {user.isSuperAdmin ? 'Super Admin' : 'User'}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-col">
+                                            <span>{format(new Date(user.createdAt), 'PP')}</span>
+                                            <span className="text-xs text-muted-foreground">
+                                                ({formatDistanceToNow(new Date(user.createdAt), { addSuffix: true })})
+                                            </span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent>
+                                                <DropdownMenuItem asChild><Link href={`/profile/${user.id}`}>View Profile</Link></DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleToggleAdmin(user)} disabled={isPending}>
+                                                    {user.isSuperAdmin ? 'Revoke Admin' : 'Make Admin'}
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+             )}
         </div>
     );
 }

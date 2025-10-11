@@ -1,10 +1,48 @@
+'use client';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { getPostsAction, deletePostAction } from './actions';
+import { getPostsAction } from './actions';
 import { ContentManagementClient } from './client';
 import type { Post } from '@/lib/types';
+import { useEffect, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default async function AdminContentPage() {
-  const posts = await getPostsAction();
+function PageSkeleton() {
+  return (
+    <div className="space-y-8">
+      <div>
+        <Skeleton className="h-10 w-1/2" />
+        <Skeleton className="h-4 w-3/4 mt-2" />
+      </div>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-1/4" />
+          <Skeleton className="h-4 w-1/2 mt-1" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-40 w-full" />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export default function AdminContentPage() {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadPosts() {
+      setIsLoading(true);
+      const postsData = await getPostsAction();
+      setPosts(postsData);
+      setIsLoading(false);
+    }
+    loadPosts();
+  }, []);
+
+  if (isLoading) {
+    return <PageSkeleton />;
+  }
 
   return (
     <div className="space-y-8">
