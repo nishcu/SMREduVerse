@@ -1,11 +1,19 @@
+
 import * as admin from 'firebase-admin';
+import type { App } from 'firebase-admin/app';
 
 // Log to confirm import
 console.log('firebase-admin-new: firebase-admin imported:', !!admin);
 
+let app: App | undefined;
+
 function getFirebaseAdmin() {
+  if (app) {
+    return { app, auth: admin.auth(app), db: admin.firestore(app), storage: admin.storage(app) };
+  }
+  
   if (admin.apps.length > 0 && admin.apps[0]) {
-    const app = admin.apps[0];
+    app = admin.apps[0];
     return { app, auth: admin.auth(app), db: admin.firestore(app), storage: admin.storage(app) };
   }
 
@@ -25,18 +33,12 @@ function getFirebaseAdmin() {
       console.error('getFirebaseAdmin: Missing environment variables:', missingVars.join(', '));
       throw new Error(`Missing environment variables: ${missingVars.join(', ')}`);
     }
-
-    // Validate private key format
-    if (!requiredVars.privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
-      console.error('getFirebaseAdmin: Invalid FIREBASE_PRIVATE_KEY format');
-      throw new Error('Invalid FIREBASE_PRIVATE_KEY format');
-    }
-
-    const app = admin.initializeApp({
+    
+    app = admin.initializeApp({
       credential: admin.credential.cert({
-        projectId: requiredVars.projectId,
-        clientEmail: requiredVars.clientEmail,
-        privateKey: requiredVars.privateKey.replace(/\\n/g, '\n'),
+        projectId: requiredVars.projectId!,
+        clientEmail: requiredVars.clientEmail!,
+        privateKey: requiredVars.privateKey!.replace(/\\n/g, '\n'),
       }),
       databaseURL: `https://${requiredVars.projectId}.firebaseio.com`,
     });
