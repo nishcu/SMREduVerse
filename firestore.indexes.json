@@ -3,7 +3,7 @@
   "indexes": [
     {
       "collectionGroup": "enrollments",
-      "queryScope": "COLLECTION_GROUP",
+      "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "lastAccessed", "order": "DESCENDING" }
