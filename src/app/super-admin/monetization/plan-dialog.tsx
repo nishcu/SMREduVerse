@@ -1,6 +1,5 @@
 'use client';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { z } from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,16 +10,6 @@ import { useEffect, useActionState } from 'react';
 import type { SubscriptionPlan } from '@/lib/types';
 import { saveSubscriptionPlanAction } from './actions';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
-
-const PlanSchema = z.object({
-    name: z.string().min(1, 'Plan name is required'),
-    price: z.string().min(1, 'Price is required'),
-    pricePeriod: z.string().min(1, 'Price period is required'),
-    features: z.array(z.string()).min(1, 'At least one feature is required'),
-    isPopular: z.boolean(),
-});
-
-type PlanFormValues = z.infer<typeof PlanSchema>;
 
 interface PlanDialogProps {
   isOpen: boolean;
@@ -33,7 +22,9 @@ export function PlanDialog({ isOpen, setOpen, plan, onPlanSaved }: PlanDialogPro
     const [state, formAction, isPending] = useActionState(saveSubscriptionPlanAction, { success: false });
     const { toast } = useToast();
 
-    const form = useForm<PlanFormValues>();
+    const form = useForm({
+       defaultValues: { name: '', price: '', pricePeriod: '', features: [''], isPopular: false }
+    });
 
     const { fields, append, remove } = useFieldArray({
         control: form.control,

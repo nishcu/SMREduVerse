@@ -1,11 +1,8 @@
-
 'use server';
 
 import { getFirebaseAdmin } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { revalidatePath } from 'next/cache';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { errorEmitter } from '@/firebase/error-emitter';
 
 export async function toggleLessonCompletionAction(
   userId: string,
@@ -37,13 +34,7 @@ export async function toggleLessonCompletionAction(
     revalidatePath(`/my-classes/${courseId}`);
     return { success: true };
   } catch (error: any) {
-    const permissionError = new FirestorePermissionError({
-        path: enrollmentRef.path,
-        operation: 'update',
-        requestResourceData: { progress: { chapters: { main: { lessons: { [lessonId]: { completed: isCompleted } } } } } },
-        auth: { uid: userId },
-    });
-    errorEmitter.emit('permission-error', permissionError);
+    console.error('Error toggling lesson completion:', error);
     return { success: false, error: error.message };
   }
 }

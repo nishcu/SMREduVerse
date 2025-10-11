@@ -1,17 +1,17 @@
-
 'use client';
 import { useState, useEffect } from 'react';
 import { onSnapshot, type Query } from 'firebase/firestore';
-import { errorEmitter } from '../error-emitter';
-import { FirestorePermissionError } from '../errors';
+import { useToast } from '@/hooks/use-toast';
 
 export function useCollection<T>(query: Query<T> | null) {
   const [data, setData] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!query) {
+      setData([]);
       setLoading(false);
       return;
     }
@@ -27,18 +27,19 @@ export function useCollection<T>(query: Query<T> | null) {
         setLoading(false);
       },
       (err) => {
-        const permissionError = new FirestorePermissionError({
-          path: (query as any)._query.path.segments.join('/'),
-          operation: 'list',
-        });
-        errorEmitter.emit('permission-error', permissionError);
+        console.error("Firestore collection error:", err);
+        toast({
+            variant: 'destructive',
+            title: 'Error loading data',
+            description: 'Could not fetch collection data. You may not have the required permissions.'
+        })
         setError(err);
         setLoading(false);
       }
     );
     return () => unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query?._query.path.segments.join('/')]);
+  }, [query?.path, query?.converter]); // A simplified dependency array
 
   return { data, loading, error };
 }

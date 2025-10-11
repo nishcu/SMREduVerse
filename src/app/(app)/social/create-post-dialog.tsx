@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useActionState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import {
@@ -25,7 +25,6 @@ import { createPostAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { auth } from '@/lib/firebase';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Form,
@@ -35,7 +34,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useActionState } from 'react';
 
 const subjects = [
     "Mathematics", "Science", "English", "History", "Geography", "Biology", 
@@ -44,16 +42,6 @@ const subjects = [
     "Environmental Science", "Civics", "Economics", "Cooking", 
     "Games & Challenges", "Other"
 ];
-
-const PostSchema = z.object({
-  content: z.string().min(1, 'Post content cannot be empty.').max(280, 'Post content must be 280 characters or less.'),
-  imageUrl: z.string().url('Please enter a valid URL.').optional().or(z.literal('')),
-  postType: z.enum(['text', 'image', 'video', 'question']),
-  subject: z.string({ required_error: 'Please select a subject.'}),
-  idToken: z.string().min(1, 'idToken is required'),
-});
-
-type PostFormValues = z.infer<typeof PostSchema>;
 
 const initialState: { success: boolean; error?: string | null; errors?: any } = {
   success: false,
@@ -66,17 +54,16 @@ export function CreatePostDialog({
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 }) {
-  const { user, getInitials } = useAuth();
+  const { user, getInitials, firebaseUser } = useAuth();
   const [state, formAction, isPending] = useActionState(createPostAction, initialState);
   const { toast } = useToast();
 
-  const form = useForm<PostFormValues>({
+  const form = useForm({
     defaultValues: {
       content: '',
       imageUrl: '',
       postType: 'text',
       subject: 'General Knowledge',
-      idToken: '',
     },
   });
 
@@ -96,15 +83,7 @@ export function CreatePostDialog({
       });
     }
   }, [state, toast, onOpenChange, form]);
-  
-  useEffect(() => {
-    if (user && auth.currentUser) {
-        auth.currentUser.getIdToken().then(token => {
-            form.setValue('idToken', token);
-        });
-    }
-  }, [user, form]);
-  
+    
   if (!user) return null;
 
 
@@ -171,7 +150,7 @@ export function CreatePostDialog({
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>Post Type</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} name={field.name}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select post type" />
@@ -194,7 +173,7 @@ export function CreatePostDialog({
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>Subject</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} name={field.name}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select subject" />
@@ -212,11 +191,11 @@ export function CreatePostDialog({
                     />
                 </div>
 
-                <input type="hidden" {...form.register('idToken')} />
+                <input type="hidden" name="idToken" value={firebaseUser?.uid || ''} />
 
                 <DialogFooter>
                     <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>Cancel</Button>
-                    <Button type="submit" disabled={isPending || !form.watch('idToken')}>
+                    <Button type="submit" disabled={isPending || !firebaseUser}>
                         {isPending ? (
                             <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

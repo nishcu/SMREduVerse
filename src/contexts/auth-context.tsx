@@ -1,4 +1,3 @@
-
 'use client';
 
 import { createContext, useState, useEffect, useMemo, type ReactNode } from 'react';
@@ -6,8 +5,6 @@ import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, createUserWith
 import { auth, db } from '@/lib/firebase';
 import type { User } from '@/lib/types';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { errorEmitter } from '@/firebase/error-emitter';
 
 interface AuthContextType {
   user: User | null;
@@ -88,27 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               sports: [],
             };
             
-            // Do not await here, use catch for error handling
-            setDoc(userRef, { ...newUser, createdAt: serverTimestamp() })
-              .catch(serverError => {
-                const permissionError = new FirestorePermissionError({
-                  path: userRef.path,
-                  operation: 'create',
-                  requestResourceData: newUser,
-                  auth: { uid: user.uid },
-                });
-                errorEmitter.emit('permission-error', permissionError);
-              });
-
+            await setDoc(userRef, { ...newUser, createdAt: serverTimestamp() });
             setUser({ id: user.uid, ...newUser });
           }
         } catch (error: any) {
-            const permissionError = new FirestorePermissionError({
-                path: userRef.path,
-                operation: 'get',
-                auth: { uid: user.uid },
-            });
-            errorEmitter.emit('permission-error', permissionError);
+            console.error("Error fetching or creating user profile:", error);
+            // Don't block login if profile creation fails, but log the error
         }
       } else {
         setFirebaseUser(null);
@@ -164,15 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         sports: [],
       };
 
-      setDoc(userRef, { ...newUser, createdAt: serverTimestamp() }).catch(serverError => {
-        const permissionError = new FirestorePermissionError({
-          path: userRef.path,
-          operation: 'create',
-          requestResourceData: newUser,
-          auth: { uid: user.uid },
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      });
+      await setDoc(userRef, { ...newUser, createdAt: serverTimestamp() });
       setUser({ id: user.uid, ...newUser });
   };
 

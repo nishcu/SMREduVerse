@@ -1,12 +1,9 @@
-
 'use server';
 
 import { z } from 'zod';
 import { getFirebaseAdmin } from '@/lib/firebase-admin';
 import { GenerateCreativeTasksInputSchema, generateCreativeTasks } from '@/ai/flows/generate-creative-tasks';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { errorEmitter } from '@/firebase/error-emitter';
 
 const generateTaskActionSchema = GenerateCreativeTasksInputSchema.extend({
     idToken: z.string(),
@@ -19,13 +16,21 @@ type GenerateTaskState = {
 };
 
 
-export async function generateTaskAction(prevState: any, data: GenerateCreativeTasksInput & { idToken: string }): Promise<GenerateTaskState> {
+export async function generateTaskAction(prevState: any, data: FormData): Promise<GenerateTaskState> {
   const { auth, db } = getFirebaseAdmin();
   if (!auth || !db) {
     return { error: 'Server configuration error.' };
   }
+  
+  const formValues = {
+    idToken: data.get('idToken'),
+    topic: data.get('topic'),
+    taskType: data.get('taskType'),
+    gradeLevel: data.get('gradeLevel'),
+    assets: data.get('assets'),
+  };
 
-  const validatedFields = generateTaskActionSchema.safeParse(data);
+  const validatedFields = generateTaskActionSchema.safeParse(formValues);
 
   if (!validatedFields.success) {
     return { error: 'Invalid form data.', errors: validatedFields.error.flatten().fieldErrors };
@@ -68,19 +73,14 @@ export async function generateTaskAction(prevState: any, data: GenerateCreativeT
         return { task: aiResponse };
     });
 
-    if ('error' in result) {
+    if (result && 'error' in result) {
         return { error: result.error };
     }
 
-    return { task: result.task };
+    return { task: result?.task };
 
   } catch (error: any) {
-    const permissionError = new FirestorePermissionError({
-        path: `users/{uid}/profile/{uid}`,
-        operation: 'update',
-        auth: { uid: idToken },
-    });
-    errorEmitter.emit('permission-error', permissionError);
+    console.error('Error in generateTaskAction:', error);
     return { error: error.message || 'Failed to generate task.' };
   }
 }
@@ -138,12 +138,7 @@ export async function awardDailySessionPointsAction(idToken: string) {
       return { success: true, newBalance: result.newBalance };
   
     } catch (error: any) {
-        const permissionError = new FirestorePermissionError({
-            path: `users/{uid}/profile/{uid}`,
-            operation: 'update',
-            auth: { uid: idToken },
-        });
-        errorEmitter.emit('permission-error', permissionError);
+        console.error('Error awarding daily points:', error);
         return { success: false, error: error.message || 'Failed to award points.' };
     }
 }

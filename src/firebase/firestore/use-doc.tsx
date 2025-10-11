@@ -1,17 +1,17 @@
-
 'use client';
 import { useState, useEffect } from 'react';
-import { onSnapshot, type DocumentReference, type DocumentData } from 'firebase/firestore';
-import { errorEmitter } from '../error-emitter';
-import { FirestorePermissionError } from '../errors';
+import { onSnapshot, type DocumentReference } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 export function useDoc<T>(ref: DocumentReference<T> | null) {
   const [data, setData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!ref) {
+      setData(null);
       setLoading(false);
       return;
     }
@@ -23,16 +23,18 @@ export function useDoc<T>(ref: DocumentReference<T> | null) {
         setLoading(false);
       },
       (err) => {
-        const permissionError = new FirestorePermissionError({
-            path: ref.path,
-            operation: 'get',
-        });
-        errorEmitter.emit('permission-error', permissionError);
+        console.error(`Firestore doc error on path ${ref.path}:`, err);
+         toast({
+            variant: 'destructive',
+            title: 'Error loading data',
+            description: `Could not fetch data from ${ref.path}. You may not have the required permissions.`
+        })
         setError(err);
         setLoading(false);
       }
     );
     return () => unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ref?.path]);
 
   return { data, loading, error };

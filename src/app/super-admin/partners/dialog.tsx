@@ -27,25 +27,6 @@ import { useEffect, useActionState } from 'react';
 import type { Partner } from '@/lib/types';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { useAuth } from '@/hooks/use-auth';
-
-const PartnerSchema = z.object({
-    id: z.string().optional(),
-    name: z.string().min(1, 'Name is required'),
-    tagline: z.string().min(1, 'Tagline is required'),
-    logoUrl: z.string().url('Invalid URL for logo').optional().or(z.literal('')),
-    bannerUrl: z.string().url('Invalid URL for banner').optional().or(z.literal('')),
-    websiteUrl: z.string().url('Invalid URL for website').optional().or(z.literal('')),
-    promotionalVideoUrl: z.string().url('Invalid URL for video').optional().or(z.literal('')),
-    contactEmail: z.string().email('Invalid email address'),
-    description: z.string().min(1, 'Description is required'),
-    studentsTaught: z.coerce.number().min(0),
-    coursesOffered: z.coerce.number().min(0),
-    expertTutors: z.coerce.number().min(0),
-    achievements: z.array(z.string()).optional(),
-});
-
-type PartnerFormValues = z.infer<typeof PartnerSchema>;
 
 interface PartnerDialogProps {
   isOpen: boolean;
@@ -58,11 +39,10 @@ const initialState: { success: boolean; error?: string | null; errors?: any, dat
 
 
 export function PartnerDialog({ isOpen, setOpen, partner, onPartnerSaved }: PartnerDialogProps) {
-  const { firebaseUser } = useAuth();
   const [state, formAction, isPending] = useActionState(savePartnerAction, initialState);
   const { toast } = useToast();
 
-  const form = useForm<PartnerFormValues>({
+  const form = useForm({
     mode: 'onBlur',
   });
   
@@ -173,7 +153,7 @@ export function PartnerDialog({ isOpen, setOpen, partner, onPartnerSaved }: Part
             </div>
             <DialogFooter className="sticky bottom-0 bg-background py-4 -mx-6 px-6 border-t">
               <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={isPending || !firebaseUser}>
+              <Button type="submit" disabled={isPending}>
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save Partner
               </Button>

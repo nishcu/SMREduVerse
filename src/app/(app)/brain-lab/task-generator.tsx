@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -12,7 +11,7 @@ import { Bot, Loader2 } from 'lucide-react';
 import { useEffect, useState, useActionState, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { GenerateCreativeTasksInput, GenerateCreativeTasksOutput } from '@/ai/flows/generate-creative-tasks';
+import { GenerateCreativeTasksOutput } from '@/ai/flows/generate-creative-tasks';
 import { generateTaskAction } from './actions';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 
@@ -26,23 +25,15 @@ export function TaskGenerator() {
   const { firebaseUser } = useAuth();
   const { toast } = useToast();
   const [state, formAction, isPending] = useActionState(generateTaskAction, initialState);
-  const formRef = useRef<HTMLFormElement>(null);
   
-  const form = useForm<GenerateCreativeTasksInput & { idToken: string }>({
-    defaultValues: {
+  const form = useForm({
+     defaultValues: {
       topic: '',
       taskType: 'Writing Prompt',
       gradeLevel: 'Middle School',
       assets: '',
-      idToken: ''
     },
   });
-
-  useEffect(() => {
-    if (firebaseUser) {
-      firebaseUser.getIdToken().then(token => form.setValue('idToken', token));
-    }
-  }, [firebaseUser, form]);
 
   useEffect(() => {
     if (state?.error) {
@@ -57,16 +48,7 @@ export function TaskGenerator() {
     <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
       <Card>
         <Form {...form}>
-          <form
-            ref={formRef}
-            action={formAction}
-            onSubmit={(evt) => {
-                evt.preventDefault();
-                form.handleSubmit(() => {
-                    formRef.current?.submit();
-                })(evt);
-            }}
-          >
+          <form action={formAction}>
             <CardHeader>
               <CardTitle>Task Generator</CardTitle>
               <CardDescription>
@@ -96,7 +78,7 @@ export function TaskGenerator() {
                   render={({ field }) => (
                     <FormItem>
                       <Label>Task Type</Label>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} name={field.name}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue />
@@ -119,7 +101,7 @@ export function TaskGenerator() {
                   render={({ field }) => (
                     <FormItem>
                       <Label>Grade Level</Label>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} name={field.name}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue />
@@ -150,11 +132,11 @@ export function TaskGenerator() {
                   </FormItem>
                 )}
               />
-              <input type="hidden" {...form.register('idToken')} />
+              <input type="hidden" name="idToken" value={firebaseUser?.uid || ''} />
             </CardContent>
 
             <CardFooter>
-              <Button type="submit" disabled={isPending || !form.formState.isValid || !form.getValues('idToken')} className="w-full">
+              <Button type="submit" disabled={isPending || !firebaseUser} className="w-full">
                 {isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...

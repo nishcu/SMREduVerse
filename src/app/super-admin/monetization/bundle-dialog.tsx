@@ -12,14 +12,6 @@ import type { CoinBundle } from '@/lib/types';
 import { saveCoinBundleAction } from './actions';
 import { Loader2 } from 'lucide-react';
 
-const BundleSchema = z.object({
-    coins: z.coerce.number().min(1, 'Coins must be greater than 0'),
-    price: z.string().min(1, 'Price is required'),
-    isPopular: z.boolean(),
-});
-
-type BundleFormValues = z.infer<typeof BundleSchema>;
-
 interface BundleDialogProps {
   isOpen: boolean;
   setOpen: (open: boolean) => void;
@@ -31,7 +23,7 @@ export function BundleDialog({ isOpen, setOpen, bundle, onBundleSaved }: BundleD
     const [state, formAction, isPending] = useActionState(saveCoinBundleAction, { success: false });
     const { toast } = useToast();
 
-    const form = useForm<BundleFormValues>({
+    const form = useForm({
         defaultValues: { coins: 0, price: '', isPopular: false }
     });
 

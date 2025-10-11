@@ -1,12 +1,9 @@
-
 'use server';
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { getFirebaseAdmin } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { errorEmitter } from '@/firebase/error-emitter';
 
 const PostSchema = z.object({
   content: z.string().min(1, 'Post content cannot be empty.').max(280),
@@ -78,13 +75,7 @@ export async function createPostAction(prevState: any, formData: FormData) {
     return { success: true, error: null, errors: null };
 
   } catch (error: any) {
-    const permissionError = new FirestorePermissionError({
-        path: 'posts/{postId}',
-        operation: 'create',
-        requestResourceData: { content: postData.content },
-        auth: { uid },
-    });
-    errorEmitter.emit('permission-error', permissionError);
+    console.error(`Error creating post for user ${uid}:`, error);
     return {
       success: false,
       error: error.message || 'Failed to create post. Please try again.',

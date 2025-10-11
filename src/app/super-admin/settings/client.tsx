@@ -18,29 +18,11 @@ import { Loader2 } from 'lucide-react';
 import type { EconomySettings } from '@/lib/types';
 import { saveEconomySettingsAction } from './actions';
 
-const EconomySettingsSchema = z.object({
-  // Earning
-  rewardForGameWin: z.coerce.number().min(0),
-  rewardForPostCreation: z.coerce.number().min(0),
-  rewardForCourseCompletion: z.coerce.number().min(0),
-  signupBonus: z.coerce.number().min(0),
-  referralBonus: z.coerce.number().min(0),
-
-  // Spending
-  costForAITask: z.coerce.number().min(0),
-
-  // Conversion & Commission
-  coinsPerRupee: z.coerce.number().min(1),
-  platformFeePercent: z.coerce.number().min(0).max(100),
-});
-
-type FormValues = z.infer<typeof EconomySettingsSchema>;
-
 export function EconomySettingsClient({ initialSettings }: { initialSettings: EconomySettings | null }) {
   const [state, formAction, isPending] = useActionState(saveEconomySettingsAction, { success: false });
   const { toast } = useToast();
 
-  const form = useForm<FormValues>({
+  const form = useForm({
     defaultValues: initialSettings || {
       rewardForGameWin: 50,
       rewardForPostCreation: 5,

@@ -1,4 +1,3 @@
-
 'use client';
 import { useEffect, useActionState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
@@ -41,19 +40,6 @@ const subjects = [
     "Games & Challenges", "Other"
 ];
 
-const CourseSchema = z.object({
-  title: z.string().min(1, 'Title cannot be empty.').max(100, 'Title must be 100 characters or less.'),
-  description: z.string().min(1, 'Description cannot be empty.').max(500, 'Description must be 500 characters or less.'),
-  subject: z.string({ required_error: 'Please select a subject.' }),
-  imageUrl: z.string().url('Please enter a valid URL.').optional().or(z.literal('')),
-  duration: z.string().min(1, 'Duration is required.').max(50, 'Duration must be 50 characters or less.'),
-  knowledgeCoins: z.coerce.number().min(0, 'Coins must be a positive number.'),
-  startDate: z.date({ required_error: 'A start date is required.' }),
-  idToken: z.string().min(1, 'Authentication token is required.'),
-});
-
-type CourseFormValues = z.infer<typeof CourseSchema>;
-
 const initialState = {
     success: false,
     error: null,
@@ -66,9 +52,8 @@ export default function CreateCoursePage() {
   const router = useRouter();
   const { toast } = useToast();
   const [formState, formAction, isPending] = useActionState(createCourseAction, initialState);
-  const formRef = useRef<HTMLFormElement>(null);
-
-  const form = useForm<CourseFormValues>({
+  
+  const form = useForm({
     defaultValues: {
       title: '',
       description: '',
@@ -76,20 +61,9 @@ export default function CreateCoursePage() {
       imageUrl: '',
       duration: '',
       knowledgeCoins: 100,
-      startDate: undefined,
-      idToken: '',
+      startDate: new Date(),
     },
   });
-
-  useEffect(() => {
-    const fetchToken = async () => {
-      if (firebaseUser) {
-        const token = await firebaseUser.getIdToken();
-        form.setValue('idToken', token);
-      }
-    };
-    fetchToken();
-  }, [firebaseUser, form]);
 
   useEffect(() => {
     if (formState.success && formState.courseId) {
@@ -118,20 +92,7 @@ export default function CreateCoursePage() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form
-              ref={formRef}
-              action={formAction}
-              onSubmit={(evt) => {
-                const data = form.getValues();
-                const formData = new FormData(evt.currentTarget);
-                formData.set('startDate', data.startDate.toISOString());
-                evt.preventDefault();
-                form.handleSubmit(() => {
-                    formRef.current?.submit();
-                })(evt);
-              }}
-              className="space-y-6"
-            >
+            <form action={formAction} className="space-y-6">
               {formState.error && (
                 <Alert variant="destructive">
                   <XCircle className="h-4 w-4" />
@@ -180,7 +141,7 @@ export default function CreateCoursePage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Subject</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} name={field.name}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select subject" />
@@ -273,11 +234,10 @@ export default function CreateCoursePage() {
                   )}
                 />
               </div>
-              <input type="hidden" {...form.register('startDate', { setValueAs: (v) => v.toISOString()})} />
-              <input type="hidden" {...form.register('idToken')} />
+              <input type="hidden" name="startDate" value={form.watch('startDate')?.toISOString() || ''} />
+              <input type="hidden" name="idToken" value={firebaseUser?.uid || ''} />
 
-
-              <Button type="submit" disabled={isPending || !form.watch('idToken')}>
+              <Button type="submit" disabled={isPending || !firebaseUser}>
                 {isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
