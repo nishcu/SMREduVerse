@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -16,11 +17,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import type { EconomySettings } from '@/lib/types';
-import { saveEconomySettingsAction } from './actions';
+import { getEconomySettingsAction, saveEconomySettingsAction } from './actions';
 
-export function EconomySettingsClient({ initialSettings }: { initialSettings: EconomySettings | null }) {
+export function EconomySettingsClient() {
   const [state, formAction, isPending] = useActionState(saveEconomySettingsAction, { success: false });
   const { toast } = useToast();
+  const [initialSettings, setInitialSettings] = React.useState<EconomySettings | null>(null);
 
   const form = useForm({
     defaultValues: initialSettings || {
@@ -36,12 +38,24 @@ export function EconomySettingsClient({ initialSettings }: { initialSettings: Ec
   });
 
   useEffect(() => {
+    getEconomySettingsAction().then(settings => {
+      if (settings) {
+        setInitialSettings(settings);
+        form.reset(settings);
+      }
+    });
+  }, [form]);
+
+  useEffect(() => {
     if (state?.success) {
       toast({ title: 'Success', description: 'Economy settings have been updated.' });
+      if (state.data) {
+        form.reset(state.data);
+      }
     } else if (state?.error) {
       toast({ variant: 'destructive', title: 'Error', description: state.error });
     }
-  }, [state, toast]);
+  }, [state, toast, form]);
 
   return (
     <Form {...form}>

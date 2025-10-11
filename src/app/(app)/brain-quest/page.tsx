@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -21,7 +22,7 @@ import { type Quest, type UserQuestProgress } from '@/lib/types';
 import * as LucideIcons from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { completeQuestAction, resetProgressAction } from './actions';
-import { useTransition, useMemo } from 'react';
+import { useTransition, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useCollection, useDoc } from '@/firebase';
 import { useActionState } from 'react';
@@ -83,7 +84,7 @@ export default function BrainQuestPage() {
   const { firebaseUser } = useAuth();
   const { toast } = useToast();
   const [completeQuestState, completeQuestFormAction, isCompleteQuestPending] = useActionState(completeQuestAction, { success: false });
-  const [resetProgressState, resetProgressFormAction, isResetProgressPending] = useActionState(resetProgressAction, { success: false });
+  const [isResetProgressPending, startResetTransition] = useTransition();
   
   const isPending = isCompleteQuestPending || isResetProgressPending;
 
@@ -108,29 +109,24 @@ export default function BrainQuestPage() {
 
   const handleResetProgress = async () => {
     if (!firebaseUser) return;
-    const idToken = await firebaseUser.getIdToken();
-    const formData = new FormData();
-    formData.append('idToken', idToken);
-    
-    resetProgressFormAction(formData);
+    startResetTransition(async () => {
+      const idToken = await firebaseUser.getIdToken();
+      const result = await resetProgressAction(idToken);
+      if (result.success) {
+        toast({ title: 'Progress Reset!', description: 'Your quest adventure begins anew.' });
+      } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+      }
+    });
   }
   
-  useMemo(() => {
+  useEffect(() => {
     if (completeQuestState?.success) {
       toast({ title: 'Quest Complete!', description: 'Your progress has been saved.' });
     } else if(completeQuestState?.error) {
        toast({ variant: 'destructive', title: 'Error', description: completeQuestState.error });
     }
   }, [completeQuestState, toast]);
-
-  useMemo(() => {
-    if (resetProgressState?.success) {
-      toast({ title: 'Progress Reset!', description: 'Your quest adventure begins anew.' });
-    } else if (resetProgressState?.error) {
-       toast({ variant: 'destructive', title: 'Error', description: resetProgressState.error });
-    }
-  }, [resetProgressState, toast]);
-
 
   const isLoading = loadingQuests || loadingProgress;
   const error = errorQuests || errorProgress;
@@ -146,9 +142,7 @@ export default function BrainQuestPage() {
             Explore the world of knowledge and complete quests to earn rewards.
           </p>
         </div>
-        <form action={handleResetProgress}>
-            <Button variant="outline" disabled={isPending}>Reset Progress</Button>
-        </form>
+        <Button onClick={handleResetProgress} variant="outline" disabled={isPending}>Reset Progress</Button>
       </div>
 
       {error && (
@@ -162,7 +156,7 @@ export default function BrainQuestPage() {
          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
            {[...Array(5)].map((_, i) => <QuestCardSkeleton key={i} />)}
          </div>
-      ) : (
+      ) : quests && quests.length > 0 ? (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {quests?.map(quest => (
             <QuestCard 
@@ -173,6 +167,11 @@ export default function BrainQuestPage() {
                 isPending={isPending}
             />
           ))}
+        </div>
+      ) : (
+        <div className="text-center text-muted-foreground py-16 border-2 border-dashed rounded-lg">
+          <p className="text-lg font-medium">The adventure awaits!</p>
+          <p>It seems there are no quests loaded yet. An administrator can add them from the settings panel.</p>
         </div>
       )}
     </div>
