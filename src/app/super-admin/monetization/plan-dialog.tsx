@@ -33,9 +33,7 @@ export function PlanDialog({ isOpen, setOpen, plan, onPlanSaved }: PlanDialogPro
     const [state, formAction, isPending] = useActionState(saveSubscriptionPlanAction, { success: false });
     const { toast } = useToast();
 
-    const form = useForm<PlanFormValues>({
-        defaultValues: { name: '', price: '', pricePeriod: '', features: [''], isPopular: false }
-    });
+    const form = useForm<PlanFormValues>();
 
     const { fields, append, remove } = useFieldArray({
         control: form.control,
