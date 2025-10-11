@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from 'zod';
-import { getAdminDb } from '@/lib/firebase-admin-new';
+import { getAdminDb } from '@/lib/firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { SubscriptionPlan, CoinBundle } from '@/lib/types';

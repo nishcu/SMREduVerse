@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from 'zod';
-import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin-new';
+import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin';
 import { revalidatePath } from 'next/cache';
 import type { Partner, PartnerApplication, User } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';

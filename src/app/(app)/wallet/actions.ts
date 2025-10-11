@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin-new';
+import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { EconomySettings } from '@/lib/types';
 

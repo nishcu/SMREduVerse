@@ -1,9 +1,10 @@
+
 'use server';
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { FieldValue } from 'firebase-admin/firestore';
-import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin-new';
+import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 
 const questActionSchema = z.object({
   idToken: z.string().min(1, 'Authentication token is required'),

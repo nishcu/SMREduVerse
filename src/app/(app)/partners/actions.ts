@@ -1,5 +1,6 @@
+
 'use server';
-import { getAdminDb } from '@/lib/firebase-admin-new';
+import { getAdminDb } from '@/lib/firebase-admin';
 import type { Partner, PartnerCourse, PartnerProduct, Contest } from '@/lib/types';
 import { Timestamp } from 'firebase-admin/firestore';
 

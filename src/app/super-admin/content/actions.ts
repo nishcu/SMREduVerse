@@ -1,6 +1,6 @@
 
 'use server';
-import { getAdminDb } from '@/lib/firebase-admin-new';
+import { getAdminDb } from '@/lib/firebase-admin';
 import { revalidatePath } from 'next/cache';
 import type { Post } from '@/lib/types';
 import { Timestamp } from 'firebase-admin/firestore';

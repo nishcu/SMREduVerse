@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getAdminDb } from '@/lib/firebase-admin-new';
+import { getAdminDb } from '@/lib/firebase-admin';
 
 export async function searchAction(query: string): Promise<{ users: any[], courses: any[], posts: any[] }> {
     const db = getAdminDb();

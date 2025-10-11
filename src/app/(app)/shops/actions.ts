@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getAdminDb } from '@/lib/firebase-admin-new';
+import { getAdminDb } from '@/lib/firebase-admin';
 import type { PartnerProduct } from '@/lib/types';
 
 export async function getAllProductsAction(): Promise<{ success: boolean; data?: PartnerProduct[]; error?: string }> {

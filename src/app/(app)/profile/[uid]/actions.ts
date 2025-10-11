@@ -3,7 +3,7 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin-new';
+import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin';
 import type { EducationHistory } from '@/lib/types';
 
 const EducationHistorySchema = z.object({

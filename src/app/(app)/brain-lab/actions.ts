@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from 'zod';
-import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin-new';
+import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin';
 import { GenerateCreativeTasksInputSchema, generateCreativeTasks } from '@/ai/flows/generate-creative-tasks';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 

@@ -2,7 +2,7 @@
 'use server';
 
 import type { SubscriptionPlan, CoinBundle } from '@/lib/types';
-import { getAdminDb } from '@/lib/firebase-admin-new';
+import { getAdminDb } from '@/lib/firebase-admin';
 
 
 export async function getSubscriptionPlansAction(): Promise<SubscriptionPlan[]> {

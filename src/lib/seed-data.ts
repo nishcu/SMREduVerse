@@ -1,6 +1,6 @@
 
 'use server';
-import { getAdminDb } from '@/lib/firebase-admin-new';
+import { getAdminDb } from '@/lib/firebase-admin';
 import type { Quest } from '@/lib/types';
 
 const quests: Omit<Quest, 'id'>[] = [
