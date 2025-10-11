@@ -54,11 +54,11 @@ function QuestCard({ quest, isCompleted, onComplete, isPending }: { quest: Quest
     <Card className={`flex flex-col transition-all ${isCompleted ? 'bg-muted/50' : 'bg-card'}`}>
       <CardHeader className="flex-row items-start gap-4 space-y-0">
         <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${isCompleted ? 'bg-primary/20' : 'bg-primary'}`}>
-            <Icon className={`h-6 w-6 ${isCompleted ? 'text-primary' : 'text-primary-foreground'}`} />
+          <Icon className={`h-6 w-6 ${isCompleted ? 'text-primary' : 'text-primary-foreground'}`} />
         </div>
         <div className='flex-1'>
-            <CardTitle>{quest.name}</CardTitle>
-            <CardDescription>{quest.subject} - {quest.difficulty}</CardDescription>
+          <CardTitle>{quest.name}</CardTitle>
+          <CardDescription>{quest.subject} - {quest.difficulty}</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="flex-grow">
@@ -66,19 +66,18 @@ function QuestCard({ quest, isCompleted, onComplete, isPending }: { quest: Quest
       </CardContent>
       <CardFooter>
         <form action={() => onComplete(quest.id)} className="w-full">
-            <Button className="w-full" disabled={isCompleted || isPending}>
+          <Button className="w-full" disabled={isCompleted || isPending}>
             {isCompleted ? (
-                <><LucideIcons.CheckCircle className="mr-2 h-4 w-4" /> Completed</>
+              <><LucideIcons.CheckCircle className="mr-2 h-4 w-4" /> Completed</>
             ) : (
-                'Mark as Complete'
+              'Mark as Complete'
             )}
-            </Button>
+          </Button>
         </form>
       </CardFooter>
     </Card>
   );
 }
-
 
 export default function BrainQuestPage() {
   const { firebaseUser } = useAuth();
@@ -106,21 +105,38 @@ export default function BrainQuestPage() {
     formData.append('questId', questId);
     
     completeQuestFormAction(formData);
-  }
+  };
+
+  // Fixed: Async handler for reset to fetch ID token
+  const handleResetProgress = async () => {
+    if (!firebaseUser) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please log in to reset progress.' });
+      return;
+    }
+    try {
+      const idToken = await firebaseUser.getIdToken();
+      const formData = new FormData();
+      formData.append('idToken', idToken);
+      resetFormAction(formData);
+    } catch (error) {
+      console.error('Error getting ID token for reset:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to reset progress. Please try again.' });
+    }
+  };
   
   useEffect(() => {
     if (completeQuestState?.success) {
       toast({ title: 'Quest Complete!', description: 'Your progress has been saved.' });
-    } else if(completeQuestState?.error) {
-       toast({ variant: 'destructive', title: 'Error', description: completeQuestState.error });
+    } else if (completeQuestState?.error) {
+      toast({ variant: 'destructive', title: 'Error', description: completeQuestState.error });
     }
   }, [completeQuestState, toast]);
 
   useEffect(() => {
     if (resetState?.success) {
-        toast({ title: 'Progress Reset!', description: 'Your quest adventure begins anew.' });
+      toast({ title: 'Progress Reset!', description: 'Your quest adventure begins anew.' });
     } else if (resetState?.error) {
-        toast({ variant: 'destructive', title: 'Error', description: resetState.error });
+      toast({ variant: 'destructive', title: 'Error', description: resetState.error });
     }
   }, [resetState, toast]);
 
@@ -138,32 +154,36 @@ export default function BrainQuestPage() {
             Explore the world of knowledge and complete quests to earn rewards.
           </p>
         </div>
-        <form action={resetFormAction}>
-            <input type="hidden" name="idToken" value={firebaseUser?.uid || ''} />
-            <Button type="submit" variant="outline" disabled={isPending || !firebaseUser}>Reset Progress</Button>
-        </form>
+        {/* Fixed: Button with async onClick instead of form */}
+        <Button 
+          onClick={handleResetProgress} 
+          variant="outline" 
+          disabled={isPending || !firebaseUser}
+        >
+          {isPending ? 'Resetting...' : 'Reset Progress'}
+        </Button>
       </div>
 
       {error && (
-         <Alert variant="destructive">
-            <AlertTitle>Error Loading Quests</AlertTitle>
-            <AlertDescription>{error.message}</AlertDescription>
+        <Alert variant="destructive">
+          <AlertTitle>Error Loading Quests</AlertTitle>
+          <AlertDescription>{error.message}</AlertDescription>
         </Alert>
       )}
 
       {isLoading ? (
-         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-           {[...Array(5)].map((_, i) => <QuestCardSkeleton key={i} />)}
-         </div>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {[...Array(5)].map((_, i) => <QuestCardSkeleton key={i} />)}
+        </div>
       ) : quests && quests.length > 0 ? (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {quests?.map(quest => (
             <QuestCard 
-                key={quest.id} 
-                quest={quest}
-                isCompleted={completedQuests.includes(quest.id)}
-                onComplete={handleCompleteQuest}
-                isPending={isPending}
+              key={quest.id} 
+              quest={quest}
+              isCompleted={completedQuests.includes(quest.id)}
+              onComplete={handleCompleteQuest}
+              isPending={isPending}
             />
           ))}
         </div>
