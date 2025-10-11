@@ -1,7 +1,7 @@
 
 'use client';
-import { useActionState, useEffect } from 'react';
-import { getSubscriptionPlansAction, getCoinBundlesAction } from '@/app/billing/actions';
+import { useState, useEffect } from 'react';
+import { getSubscriptionPlansAction, getCoinBundlesAction } from '@/app/(app)/billing/actions';
 import type { SubscriptionPlan, CoinBundle } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SubscriptionPlanCard } from '@/components/subscription-plan-card';
@@ -13,26 +13,21 @@ type BillingState = {
     bundles: CoinBundle[];
 };
 
-const initialState: BillingState = {
-    plans: [],
-    bundles: [],
-};
-
-async function loadBillingData(): Promise<BillingState> {
-    const [plans, bundles] = await Promise.all([
-        getSubscriptionPlansAction(),
-        getCoinBundlesAction(),
-    ]);
-    return { plans, bundles };
-}
-
-
 export default function BillingPage() {
-    const [state, loadAction, isPending] = useActionState(loadBillingData, initialState);
+    const [state, setState] = useState<BillingState>({ plans: [], bundles: [] });
+    const [isPending, setIsPending] = useState(true);
 
     useEffect(() => {
-        loadAction();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        const loadData = async () => {
+            setIsPending(true);
+            const [plans, bundles] = await Promise.all([
+                getSubscriptionPlansAction(),
+                getCoinBundlesAction(),
+            ]);
+            setState({ plans, bundles });
+            setIsPending(false);
+        };
+        loadData();
     }, []);
 
     return (
