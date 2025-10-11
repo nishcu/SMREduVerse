@@ -2,9 +2,7 @@
 import 'dotenv/config';
 import * as admin from 'firebase-admin';
 
-let app: admin.app.App | undefined;
-
-function initializeFirebaseAdmin() {
+function getFirebaseAdmin() {
   if (admin.apps.length > 0) {
     return admin.app();
   }
@@ -20,13 +18,11 @@ function initializeFirebaseAdmin() {
         throw new Error('Firebase admin environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) are not set. Please check your .env file.');
     }
 
-    app = admin.initializeApp({
+    console.log('Initializing Firebase Admin SDK...');
+    return admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
       databaseURL: `https://${serviceAccount.projectId}.firebaseio.com`,
     });
-    console.log('Firebase Admin SDK initialized successfully');
-    return app;
-
   } catch (error: any) {
     console.error('Failed to initialize Firebase Admin SDK:', error);
     // Re-throw the error to make the failure explicit
@@ -34,8 +30,6 @@ function initializeFirebaseAdmin() {
   }
 }
 
-const adminApp = initializeFirebaseAdmin();
-
-export const getAdminDb = () => admin.firestore(adminApp);
-export const getAdminAuth = () => admin.auth(adminApp);
-export const getAdminStorage = () => admin.storage(adminApp);
+export const getAdminDb = () => admin.firestore(getFirebaseAdmin());
+export const getAdminAuth = () => admin.auth(getFirebaseAdmin());
+export const getAdminStorage = () => admin.storage(getFirebaseAdmin());
