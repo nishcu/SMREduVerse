@@ -1,4 +1,3 @@
-
 'use client';
 import {
     BookOpen,
@@ -48,6 +47,7 @@ import { useEffect } from 'react';
 import { NotificationDropdown } from '@/components/notification-dropdown';
 import { Button } from '@/components/ui/button';
 import { GlobalSearch } from '@/components/global-search';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 const navItems = {
   'Core': [
@@ -198,7 +198,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <UserNav />
           </div>
         </header>
-        <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
+        <main className="flex-1 p-4 md:p-6 lg:p-8">
+            <FirebaseErrorListener />
+            {children}
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );

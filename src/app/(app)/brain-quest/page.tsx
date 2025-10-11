@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import {
@@ -26,6 +24,7 @@ import { completeQuestAction, resetProgressAction } from './actions';
 import { useTransition, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useCollection, useDoc } from '@/firebase';
+import { useActionState } from 'react';
 
 function QuestCardSkeleton() {
   return (
@@ -83,12 +82,15 @@ function QuestCard({ quest, isCompleted, onComplete, isPending }: { quest: Quest
 export default function BrainQuestPage() {
   const { firebaseUser } = useAuth();
   const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
+  const [completeQuestState, completeQuestFormAction, isCompleteQuestPending] = useActionState(completeQuestAction, { success: false });
+  const [resetProgressState, resetProgressFormAction, isResetProgressPending] = useActionState(resetProgressAction, { success: false });
+  
+  const isPending = isCompleteQuestPending || isResetProgressPending;
 
   const questsQuery = useMemo(() => collection(db, 'quests'), []);
   const { data: quests, loading: loadingQuests, error: errorQuests } = useCollection<Quest>(questsQuery);
   
-  const progressRef = useMemo(() => firebaseUser ? doc(db, `users/${firebaseUser.uid}/quest-progress/main`) : null, [firebaseUser?.uid]);
+  const progressRef = useMemo(() => firebaseUser ? doc(db, `users/${firebaseUser.uid}/quest-progress/main`) : null, [firebaseUser]);
   const { data: progress, loading: loadingProgress, error: errorProgress } = useDoc<UserQuestProgress>(progressRef as DocumentReference<UserQuestProgress> | null);
 
   const completedQuests = progress?.completedQuests || [];
@@ -100,15 +102,8 @@ export default function BrainQuestPage() {
     const formData = new FormData();
     formData.append('idToken', idToken);
     formData.append('questId', questId);
-
-    startTransition(async () => {
-      const result = await completeQuestAction(formData);
-      if (result.error) {
-        toast({ variant: 'destructive', title: 'Error', description: result.error });
-      } else {
-        toast({ title: 'Quest Complete!', description: 'Your progress has been saved.' });
-      }
-    });
+    
+    completeQuestFormAction(formData);
   }
 
   const handleResetProgress = async () => {
@@ -116,16 +111,26 @@ export default function BrainQuestPage() {
     const idToken = await firebaseUser.getIdToken();
     const formData = new FormData();
     formData.append('idToken', idToken);
-
-    startTransition(async () => {
-        const result = await resetProgressAction(formData);
-        if (result.error) {
-          toast({ variant: 'destructive', title: 'Error', description: result.error });
-        } else {
-          toast({ title: 'Progress Reset!', description: 'Your quest adventure begins anew.' });
-        }
-    });
+    
+    resetProgressFormAction(formData);
   }
+  
+  useMemo(() => {
+    if (completeQuestState?.success) {
+      toast({ title: 'Quest Complete!', description: 'Your progress has been saved.' });
+    } else if(completeQuestState?.error) {
+       toast({ variant: 'destructive', title: 'Error', description: completeQuestState.error });
+    }
+  }, [completeQuestState, toast]);
+
+  useMemo(() => {
+    if (resetProgressState?.success) {
+      toast({ title: 'Progress Reset!', description: 'Your quest adventure begins anew.' });
+    } else if (resetProgressState?.error) {
+       toast({ variant: 'destructive', title: 'Error', description: resetProgressState.error });
+    }
+  }, [resetProgressState, toast]);
+
 
   const isLoading = loadingQuests || loadingProgress;
   const error = errorQuests || errorProgress;

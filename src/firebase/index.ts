@@ -8,5 +8,9 @@ export * from '../lib/firebase';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
+// Error handling utilities
+export * from './error-emitter';
+export * from './errors';
+
 // Exporting `useAuth` from `hooks` to keep all user-facing hooks consistent
 export * from '../hooks/use-auth';
