@@ -3,8 +3,9 @@
   "indexes": [
     {
       "collectionGroup": "enrollments",
-      "queryScope": "COLLECTION",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "lastAccessed", "order": "DESCENDING" }
       ]
     },
@@ -37,6 +38,13 @@
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
+     {
+      "collectionGroup": "courses",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "instructorId", "order": "ASCENDING" }
+      ]
+    },
     {
       "collectionGroup": "study-rooms",
       "queryScope": "COLLECTION",
@@ -60,8 +68,15 @@
       ]
     },
     {
+      "collectionGroup": "partner-applications",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "courses",
-      "queryScope": "COLLECTION",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
         { "fieldPath": "partnerId", "order": "ASCENDING" }
       ]
@@ -75,9 +90,23 @@
     },
     {
       "collectionGroup": "contests",
-      "queryScope": "COLLECTION",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
         { "fieldPath": "partnerId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "profile",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "followersCount", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "profile",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     }
   ],
