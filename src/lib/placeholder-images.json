@@ -1,0 +1,46 @@
+{
+  "placeholderImages": [
+    {
+      "id": "course_math_101",
+      "description": "Abstract visualization of mathematical equations on a chalkboard.",
+      "imageUrl": "https://picsum.photos/seed/201/600/400",
+      "imageHint": "math equations"
+    },
+    {
+      "id": "course_sci_101",
+      "description": "A glowing atom model representing the basics of physics.",
+      "imageUrl": "https://picsum.photos/seed/202/600/400",
+      "imageHint": "atom physics"
+    },
+    {
+      "id": "course_hist_101",
+      "description": "Sunlight streaming through ancient ruins.",
+      "imageUrl": "https://picsum.photos/seed/203/600/400",
+      "imageHint": "ancient ruins"
+    },
+    {
+      "id": "course_cs_101",
+      "description": "Lines of Python code on a dark-themed editor.",
+      "imageUrl": "https://picsum.photos/seed/204/600/400",
+      "imageHint": "python code"
+    },
+    {
+      "id": "room_algebra_1",
+      "description": "A diverse group of students collaborating in a modern classroom.",
+      "imageUrl": "https://picsum.photos/seed/301/600/400",
+      "imageHint": "classroom discussion"
+    },
+    {
+      "id": "room_physics_1",
+      "description": "Colorful chemicals in beakers from a science experiment.",
+      "imageUrl": "https://picsum.photos/seed/302/600/400",
+      "imageHint": "science experiment"
+    },
+    {
+      "id": "room_history_1",
+      "description": "An old, weathered map spread out on a wooden table.",
+      "imageUrl": "https://picsum.photos/seed/303/600/400",
+      "imageHint": "ancient map"
+    }
+  ]
+}

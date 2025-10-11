@@ -1,0 +1,86 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if user is the owner
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Allow reading all user profiles for features like the Tutors page.
+    // Write access is still restricted by the more specific rule below.
+    match /{path=**}/profile/{profileId} {
+      allow get, list: if isAuthenticated();
+    }
+    
+    // PUBLIC COLLECTIONS (READ-ONLY FOR ALL)
+    match /courses/{courseId}/{path=**} {
+      allow read: if true;
+      allow write: if false; // To be defined later for instructors
+    }
+    
+    match /quests/{questId} {
+        allow read: if true;
+        allow write: if false; // Only admin can write
+    }
+
+    match /partners/{partnerId}/{path=**} {
+      allow read: if true;
+      allow write: if false; // To be defined later
+    }
+    
+    match /study-rooms/{roomId} {
+        allow read: if true;
+        allow write: if false; // To be defined later for hosts
+    }
+
+    // USER-SPECIFIC DATA
+    match /users/{userId} {
+
+      // Profile is public readable, but only owner can write
+      match /profile/{profileId} {
+        allow write: if isOwner(userId);
+        // Read is handled by the collection group rule above.
+        allow read: if isAuthenticated();
+      }
+      
+      // Other user subcollections should only be accessible by the owner
+      match /{collection}/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+    
+    // CHAT
+    match /chats/{chatId} {
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.participants;
+
+      // Messages subcollection
+      match /messages/{messageId} {
+        // Anyone in the chat can read messages
+        allow read: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        // Anyone in the chat can write messages, but only as themselves
+        allow create: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants && request.resource.data.authorUid == request.auth.uid;
+      }
+    }
+
+    // POSTS
+    match /posts/{postId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && request.resource.data.author.uid == request.auth.uid;
+        // Future rules for likes/comments/delete
+    }
+
+    // APP SETTINGS - Generally read-only for users, writeable by admins
+    match /app-settings/{document=**} {
+      allow read: if true;
+      allow write: if false; // Only admins should write
+    }
+  }
+}

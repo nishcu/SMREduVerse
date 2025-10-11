@@ -1,0 +1,457 @@
+
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a user of the application.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the user." },
+        "username": { "type": "string", "description": "The user's unique username." },
+        "name": { "type": "string", "description": "The user's full name." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "bio": { "type": "string", "description": "A short biography of the user." },
+        "avatarUrl": { "type": "string", "format": "uri", "description": "URL of the user's avatar image." },
+        "isSuperAdmin": { "type": "boolean", "description": "Flag indicating if the user is a super administrator." },
+        "partnerId": { "type": "string", "description": "The ID of the partner profile associated with this user, if any." },
+        "followersCount": { "type": "number", "description": "Number of followers the user has." },
+        "followingCount": { "type": "number", "description": "Number of users this user is following." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The timestamp when the user account was created." },
+        "settings": { "$ref": "#/entities/UserSettings" },
+        "wallet": { "$ref": "#/entities/Wallet" },
+        "knowledgePoints": { "type": "number", "description": "Lifetime accumulation of all points ever earned." },
+        "referralCode": { "type": "string", "description": "The user's unique referral code." },
+        "grade": { "type": "string", "description": "The user's current grade or class." },
+        "educationHistory": { "type": "array", "items": { "$ref": "#/entities/EducationHistory" } },
+        "syllabus": { "type": "string", "description": "The user's educational syllabus (e.g., CBSE, State)." },
+        "medium": { "type": "string", "description": "The medium of instruction for the user (e.g, English, Hindi)." },
+        "interests": { "type": "array", "items": { "type": "string" }, "description": "A list of the user's interests." },
+        "sports": { "type": "array", "items": { "type": "string" }, "description": "A list of sports the user is interested in." }
+      },
+      "required": ["id", "username", "name", "email", "avatarUrl", "isSuperAdmin", "followersCount", "followingCount", "createdAt", "settings", "wallet", "knowledgePoints", "referralCode"]
+    },
+    "EducationHistory": {
+        "title": "Education History",
+        "description": "Represents an entry in a user's education timeline.",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string", "description": "Name of the institution." },
+            "level": { "type": "string", "description": "e.g., High School, Bachelor's Degree" },
+            "startYear": { "type": "string" },
+            "endYear": { "type": "string" }
+        },
+        "required": ["id", "name", "level", "startYear", "endYear"]
+    },
+    "Contest": {
+        "title": "Contest",
+        "description": "Represents a platform-wide contest.",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "title": { "type": "string" },
+            "description": { "type": "string" },
+            "entryFee": { "type": "number", "description": "Cost in Knowledge Coins to enter." },
+            "prize": { "type": "number", "description": "Prize in Knowledge Coins." },
+            "status": { "type": "string", "enum": ["live", "upcoming", "finished"] },
+            "startDate": { "type": "string", "format": "date-time" },
+            "endDate": { "type": "string", "format": "date-time" },
+            "participantCount": { "type": "number" },
+            "partnerId": { "type": "string", "description": "The ID of the partner hosting the contest, if any." },
+            "imageUrl": { "type": "string", "format": "uri" }
+        },
+        "required": ["id", "title", "description", "status", "startDate", "endDate"]
+    },
+    "Wallet": {
+      "title": "Wallet",
+      "description": "Represents the user's spendable coin balance.",
+      "type": "object",
+      "properties": {
+        "knowledgeCoins": { "type": "number", "description": "The current spendable balance of Knowledge Coins." }
+      },
+      "required": ["knowledgeCoins"]
+    },
+    "Transaction": {
+        "title": "Transaction",
+        "description": "Represents a transaction in the user's wallet.",
+        "type": "object",
+        "properties": {
+            "description": { "type": "string" },
+            "points": { "type": "number", "description": "The number of points involved in the transaction." },
+            "transactionType": { "type": "string", "enum": ["earn", "spend"]},
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["description", "points", "transactionType", "createdAt"]
+    },
+    "EconomySettings": {
+      "title": "Economy Settings",
+      "description": "Defines the economy settings for the app.",
+      "type": "object",
+      "properties": {
+        "rewardForGameWin": { "type": "number", "description": "Coins for winning a daily game." },
+        "rewardForPostCreation": { "type": "number", "description": "Coins for creating a post." },
+        "rewardForCourseCompletion": { "type": "number", "description": "Coins for completing a course." },
+        "signupBonus": { "type": "number", "description": "Bonus coins for new user signup." },
+        "referralBonus": { "type": "number", "description": "Bonus coins for the referrer." },
+        "costForAITask": { "type": "number", "description": "Cost to generate a task in the Brain Lab." },
+        "coinsPerRupee": { "type": "number", "description": "Conversion rate for payout value." },
+        "platformFeePercent": { "type": "number", "description": "Commission on partner/tutor sales." }
+      },
+      "required": [
+        "rewardForGameWin", "rewardForPostCreation", "rewardForCourseCompletion",
+        "signupBonus", "referralBonus", "costForAITask", "coinsPerRupee", "platformFeePercent"
+      ]
+    },
+    "SubscriptionPlan": {
+        "title": "Subscription Plan",
+        "description": "Defines a subscription tier for users.",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "price": { "type": "string" },
+            "pricePeriod": { "type": "string" },
+            "features": { "type": "array", "items": { "type": "string" } },
+            "isPopular": { "type": "boolean" }
+        },
+        "required": ["id", "name", "price", "pricePeriod", "features"]
+    },
+    "CoinBundle": {
+        "title": "Coin Bundle",
+        "description": "A package of Knowledge Coins for purchase.",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "coins": { "type": "number" },
+            "price": { "type": "string" },
+            "isPopular": { "type": "boolean" }
+        },
+        "required": ["id", "coins", "price"]
+    },
+    "UserSettings": {
+      "title": "User Settings",
+      "description": "Represents the settings for a user.",
+      "type": "object",
+      "properties": {
+        "restrictSpending": { "type": "boolean" },
+        "restrictChat": { "type": "boolean" },
+        "restrictTalentHub": { "type": "boolean" }
+      },
+      "required": ["restrictSpending", "restrictChat", "restrictTalentHub"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "Represents a post in the social feed.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "author": { "$ref": "#/entities/PostAuthor" },
+        "content": { "type": "string" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "postType": { "type": "string", "enum": ["text", "image", "video", "question"] },
+        "subject": { "type": "string" },
+        "likes": { "type": "number" },
+        "comments": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "author", "content", "postType", "subject", "likes", "comments", "createdAt"]
+    },
+    "PostAuthor": {
+      "title": "Post Author",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "avatarUrl": { "type": "string", "format": "uri" }
+      },
+      "required": ["uid", "name", "avatarUrl"]
+    },
+    "Course": {
+      "title": "Course",
+      "description": "Represents a course in the LMS.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "instructorId": { "type": "string" },
+        "instructorName": { "type": "string" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "subject": { "type": "string" },
+        "enrollmentCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "duration": { "type": "string" },
+        "knowledgeCoins": { "type": "number" },
+        "startDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "description", "instructorId", "instructorName", "imageUrl", "subject"]
+    },
+    "Chapter": {
+      "title": "Chapter",
+      "description": "A chapter within a course.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "order": { "type": "number" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "title", "order", "description"]
+    },
+    "Lesson": {
+      "title": "Lesson",
+      "description": "A lesson within a chapter.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "order": { "type": "number" },
+        "contentType": { "type": "string", "enum": ["video", "text", "pdf", "presentation"] },
+        "content": { "type": "string" },
+        "contentUrl": { "type": "string", "format": "uri" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "title", "order", "contentType"]
+    },
+    "Enrollment": {
+      "title": "Enrollment",
+      "description": "Represents a user's enrollment in a course.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "enrolledAt": { "type": "string", "format": "date-time" },
+        "progress": { "$ref": "#/entities/Progress" }
+      },
+      "required": ["id", "enrolledAt", "progress"]
+    },
+    "Progress": {
+      "title": "Progress",
+      "description": "Tracks a user's progress in a course.",
+      "type": "object",
+      "properties": {
+        "chapters": { "type": "object" },
+        "overallPercentage": { "type": "number" }
+      },
+      "required": ["chapters", "overallPercentage"]
+    },
+    "Quest": {
+      "title": "Quest",
+      "description": "Represents a single quest in the Brain Quest Adventure.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "subject": { "type": "string" },
+        "difficulty": { "type": "string", "enum": ["Easy", "Medium", "Hard"] },
+        "icon": { "type": "string", "description": "Lucide icon name for the quest." },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "name", "subject", "difficulty", "icon", "description"]
+    },
+    "UserQuestProgress": {
+        "title": "User Quest Progress",
+        "description": "Tracks a user's completed quests.",
+        "type": "object",
+        "properties": {
+            "completedQuests": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "A list of completed quest IDs."
+            }
+        },
+        "required": ["completedQuests"]
+    },
+    "StudyRoom": {
+        "title": "Study Room",
+        "description": "A collaborative space for learning.",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "description": { "type": "string" },
+            "subject": { "type": "string" },
+            "hostId": { "type": "string" },
+            "hostName": { "type": "string" },
+            "imageUrl": { "type": "string", "format": "uri" },
+            "participantCount": { "type": "number" },
+            "status": { "type": "string", "enum": ["live", "upcoming", "ended"] },
+            "roomType": { "type": "string", "enum": ["chat", "video", "audio"] },
+            "scheduledAt": { "type": "string", "format": "date-time" },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "name", "description", "subject", "hostId", "hostName", "status", "roomType", "createdAt"]
+    },
+     "Coupon": {
+      "title": "Coupon",
+      "description": "A coupon for a discount or reward.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "description": { "type": "string" },
+        "type": { "type": "string", "enum": ["percentage", "fixed_amount"] },
+        "value": { "type": "number" },
+        "expiryDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["code", "description", "type", "value", "expiryDate"]
+    },
+    "Partner": {
+      "title": "Partner",
+      "description": "Represents a partner organization on the platform.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "tagline": { "type": "string" },
+        "logoUrl": { "type": "string", "format": "uri" },
+        "bannerUrl": { "type": "string", "format": "uri" },
+        "websiteUrl": { "type": "string", "format": "uri" },
+        "promotionalVideoUrl": { "type": "string", "format": "uri" },
+        "contactEmail": { "type": "string", "format": "email" },
+        "description": { "type": "string" },
+        "achievements": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "A list of notable achievements or awards."
+        },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "studentsTaught": { "type": "number" },
+            "coursesOffered": { "type": "number" },
+            "expertTutors": { "type": "number" }
+          }
+        }
+      },
+      "required": ["id", "name", "logoUrl", "description"]
+    },
+    "PartnerApplication": {
+      "title": "Partner Application",
+      "description": "Represents an application from a potential partner.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "entityName": { "type": "string" },
+        "entityType": { "type": "string", "enum": ["individual", "organization", "institution"] },
+        "areaOfExpertise": { "type": "string" },
+        "contactName": { "type": "string" },
+        "contactEmail": { "type": "string", "format": "email" },
+        "contactMobile": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["entityName", "entityType", "areaOfExpertise", "contactName", "contactEmail", "status", "createdAt"]
+    },
+    "PartnerCourse": {
+      "title": "Partner Course",
+      "description": "A course offered by a partner.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "enrolled": { "type": "number" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "partnerId": { "type": "string" }
+      },
+      "required": ["id", "title", "category", "imageUrl", "partnerId"]
+    },
+    "PartnerProduct": {
+      "title": "Partner Product",
+      "description": "A product or service offered by a partner.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "priceInRupees": { "type": "number" },
+        "priceInCoins": { "type": "number" },
+        "partnerId": { "type": "string" }
+      },
+      "required": ["id", "title", "description", "imageUrl", "partnerId"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "/app-settings/economy": {
+        "schema": { "$ref": "#/entities/EconomySettings" },
+        "description": "Stores economy settings for the app."
+    },
+    "/app-settings/monetization/subscription-plans/{planId}": {
+        "schema": { "$ref": "#/entities/SubscriptionPlan" },
+        "description": "Stores all available subscription plans."
+    },
+    "/app-settings/monetization/coin-bundles/{bundleId}": {
+        "schema": { "$ref": "#/entities/CoinBundle" },
+        "description": "Stores all available coin bundles for purchase."
+    },
+    "/quests/{questId}": {
+        "schema": { "$ref": "#/entities/Quest" },
+        "description": "Stores all available quests for the Brain Quest Adventure."
+    },
+    "/courses/{courseId}": {
+      "schema": { "$ref": "#/entities/Course" },
+      "description": "Stores all courses available on the platform."
+    },
+    "/courses/{courseId}/chapters/{chapterId}": {
+      "schema": { "$ref": "#/entities/Chapter" },
+      "description": "Stores chapters for a specific course."
+    },
+    "/courses/{courseId}/chapters/{chapterId}/lessons/{lessonId}": {
+      "schema": { "$ref": "#/entities/Lesson" },
+      "description": "Stores lessons for a specific chapter."
+    },
+    "/users/{uid}/profile/{profileId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores public user profile information."
+    },
+    "/users/{uid}/enrollments/{courseId}": {
+      "schema": { "$ref": "#/entities/Enrollment" },
+      "description": "Tracks user enrollment and progress in courses."
+    },
+    "/users/{uid}/quest-progress/main": {
+        "schema": { "$ref": "#/entities/UserQuestProgress" },
+        "description": "Stores a user's quest completion progress."
+    },
+    "/posts/{postId}": {
+        "schema": { "$ref": "#/entities/Post" },
+        "description": "Stores all social posts."
+    },
+    "/users/{uid}/transactions/{transactionId}": {
+        "schema": { "$ref": "#/entities/Transaction" },
+        "description": "Stores all wallet transactions for a user."
+    },
+    "/study-rooms/{roomId}": {
+        "schema": { "$ref": "#/entities/StudyRoom" },
+        "description": "Stores all study rooms."
+    },
+    "/contests/{contestId}": {
+        "schema": { "$ref": "#/entities/Contest" },
+        "description": "Stores all platform-wide contests."
+    },
+    "/users/{uid}/coupons/{couponId}": {
+      "schema": { "$ref": "#/entities/Coupon" },
+      "description": "Stores coupons awarded to a specific user."
+    },
+    "/partners/{partnerId}": {
+        "schema": { "$ref": "#/entities/Partner" },
+        "description": "Stores all partner organizations."
+    },
+    "/partners/{partnerId}/courses/{courseId}": {
+        "schema": { "$ref": "#/entities/PartnerCourse" },
+        "description": "Courses offered by a specific partner."
+    },
+     "/partners/{partnerId}/products/{productId}": {
+        "schema": { "$ref": "#/entities/PartnerProduct" },
+        "description": "Products and services offered by a specific partner."
+    },
+    "/partner-applications/{applicationId}": {
+        "schema": { "$ref": "#/entities/PartnerApplication" },
+        "description": "Stores applications from potential partners."
+    }
+  }
+}
+
+    
