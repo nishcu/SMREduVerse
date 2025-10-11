@@ -2,9 +2,18 @@
 import 'dotenv/config';
 import * as admin from 'firebase-admin';
 
+// A more robust singleton pattern for Firebase Admin in a serverless environment.
+// This uses a global symbol to store the app instance, preventing re-initialization
+// across module reloads in development.
+const APP_INSTANCE_KEY = Symbol.for('firebase_admin_app');
+
 function getFirebaseAdmin() {
-  if (admin.apps.length > 0) {
-    return admin.app();
+  const globalWithApp = global as typeof globalThis & {
+    [APP_INSTANCE_KEY]?: admin.app.App;
+  };
+
+  if (globalWithApp[APP_INSTANCE_KEY]) {
+    return globalWithApp[APP_INSTANCE_KEY];
   }
 
   try {
@@ -15,14 +24,17 @@ function getFirebaseAdmin() {
     };
 
     if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
-        throw new Error('Firebase admin environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) are not set. Please check your .env file.');
+      throw new Error('Firebase admin environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) are not set. Please check your .env file.');
     }
 
-    console.log('Initializing Firebase Admin SDK...');
-    return admin.initializeApp({
+    console.log('Initializing new Firebase Admin SDK instance...');
+    const app = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      databaseURL: `https://${serviceAccount.projectId}.firebaseio.com`,
     });
+    
+    globalWithApp[APP_INSTANCE_KEY] = app;
+    return app;
+
   } catch (error: any) {
     console.error('Failed to initialize Firebase Admin SDK:', error);
     // Re-throw the error to make the failure explicit
