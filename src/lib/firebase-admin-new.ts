@@ -2,18 +2,12 @@
 import 'dotenv/config';
 import * as admin from 'firebase-admin';
 
-// A more robust singleton pattern for Firebase Admin in a serverless environment.
-// This uses a global symbol to store the app instance, preventing re-initialization
-// across module reloads in development.
-const APP_INSTANCE_KEY = Symbol.for('firebase_admin_app');
-
+// This is the recommended and most robust way to handle Firebase Admin SDK
+// initialization in a serverless environment like Next.js. It ensures that
+// the SDK is initialized only once per instance.
 function getFirebaseAdmin() {
-  const globalWithApp = global as typeof globalThis & {
-    [APP_INSTANCE_KEY]?: admin.app.App;
-  };
-
-  if (globalWithApp[APP_INSTANCE_KEY]) {
-    return globalWithApp[APP_INSTANCE_KEY];
+  if (admin.apps.length > 0) {
+    return admin.app();
   }
 
   try {
@@ -24,17 +18,12 @@ function getFirebaseAdmin() {
     };
 
     if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
-      throw new Error('Firebase admin environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) are not set. Please check your .env file.');
+      throw new Error('Firebase admin environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) are not set.');
     }
-
-    console.log('Initializing new Firebase Admin SDK instance...');
-    const app = admin.initializeApp({
+    
+    return admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     });
-    
-    globalWithApp[APP_INSTANCE_KEY] = app;
-    return app;
-
   } catch (error: any) {
     console.error('Failed to initialize Firebase Admin SDK:', error);
     // Re-throw the error to make the failure explicit
