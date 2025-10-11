@@ -100,7 +100,12 @@ export function CreatePostDialog({
         </DialogHeader>
         <Form {...form}>
             <form
-                action={formAction}
+                action={async (formData: FormData) => {
+                    if (!firebaseUser) return;
+                    const idToken = await firebaseUser.getIdToken();
+                    formData.set('idToken', idToken);
+                    formAction(formData);
+                }}
                 className="space-y-4"
             >
                 <div className="flex items-start gap-4">
@@ -190,8 +195,6 @@ export function CreatePostDialog({
                         )}
                     />
                 </div>
-
-                <input type="hidden" name="idToken" value={firebaseUser?.uid || ''} />
 
                 <DialogFooter>
                     <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>Cancel</Button>

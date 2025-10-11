@@ -1,10 +1,23 @@
+'use client';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { getUsersAction } from './actions';
 import { UserManagementClient } from './client';
+import { useEffect, useState } from "react";
 import type { User } from '@/lib/types';
+import { getUsersAction } from './actions';
 
-export default async function AdminUsersPage() {
-  const users = await getUsersAction();
+export default function AdminUsersPage() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setIsLoading(true);
+      const usersData = await getUsersAction();
+      setUsers(usersData);
+      setIsLoading(false);
+    }
+    fetchUsers();
+  }, []);
 
   return (
     <div className="space-y-8">
@@ -22,7 +35,7 @@ export default async function AdminUsersPage() {
           <CardDescription>A list of all registered users.</CardDescription>
         </CardHeader>
         <CardContent>
-          <UserManagementClient initialUsers={users} />
+          <UserManagementClient initialUsers={users} isLoading={isLoading} />
         </CardContent>
       </Card>
     </div>

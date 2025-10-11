@@ -22,7 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import type { User } from '@/lib/types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { getInitials } from '@/lib/utils';
-import { getUsersAction, updateUserAdminStatusAction } from './actions';
+import { updateUserAdminStatusAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -43,23 +43,15 @@ function UserTableSkeleton() {
     );
 }
 
-export function UserManagementClient({ initialUsers: serverUsers }: { initialUsers: User[] }) {
-    const [users, setUsers] = useState<User[]>(serverUsers);
+export function UserManagementClient({ initialUsers, isLoading }: { initialUsers: User[], isLoading: boolean }) {
+    const [users, setUsers] = useState<User[]>(initialUsers);
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
-    const [isLoading, setIsLoading] = useState(serverUsers.length === 0);
 
      useEffect(() => {
-        const fetchUsers = async () => {
-            const usersData = await getUsersAction();
-            setUsers(usersData);
-            setIsLoading(false);
-        };
-        if (serverUsers.length === 0) {
-            fetchUsers();
-        }
-    }, [serverUsers]);
+        setUsers(initialUsers);
+    }, [initialUsers]);
 
     const filteredUsers = useMemo(() =>
         users.filter(user =>
