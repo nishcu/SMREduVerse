@@ -2,9 +2,6 @@
 import 'dotenv/config';
 import * as admin from 'firebase-admin';
 
-// This is the recommended and most robust way to handle Firebase Admin SDK
-// initialization in a serverless environment like Next.js. It ensures that
-// the SDK is initialized only once per instance.
 function getFirebaseAdmin() {
   if (admin.apps.length > 0) {
     return admin.app();

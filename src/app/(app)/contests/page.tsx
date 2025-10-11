@@ -1,13 +1,27 @@
 
+'use client';
+
 import { Trophy } from 'lucide-react';
 import { getContestsAction } from '@/app/super-admin/contests/actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ContestCard } from '@/components/contest-card';
 import type { Contest } from '@/lib/types';
+import { useEffect, useState } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
+export default function ContestsPage() {
+    const [contests, setContests] = useState<Contest[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-export default async function ContestsPage() {
-    const contests = await getContestsAction() as Contest[];
+    useEffect(() => {
+        const fetchContests = async () => {
+            setIsLoading(true);
+            const contestsData = await getContestsAction();
+            setContests(contestsData as Contest[]);
+            setIsLoading(false);
+        };
+        fetchContests();
+    }, []);
 
     return (
         <div className="space-y-8">
@@ -26,7 +40,12 @@ export default async function ContestsPage() {
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
                 <div className="lg:col-span-2 space-y-6">
                     <h2 className="font-headline text-2xl font-semibold">Current & Upcoming</h2>
-                    {contests && contests.length > 0 ? (
+                    {isLoading ? (
+                        <div className="space-y-6">
+                            <Skeleton className="h-48 w-full" />
+                            <Skeleton className="h-48 w-full" />
+                        </div>
+                    ) : contests && contests.length > 0 ? (
                         contests.map((contest) => (
                             <ContestCard key={contest.id} contest={contest} />
                         ))
@@ -60,5 +79,3 @@ export default async function ContestsPage() {
         </div>
     );
 }
-
-    
