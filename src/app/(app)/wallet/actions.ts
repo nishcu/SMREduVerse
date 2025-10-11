@@ -1,12 +1,12 @@
 
 'use server';
 
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin-new';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { EconomySettings } from '@/lib/types';
 
 export async function getEconomySettingsAction(): Promise<EconomySettings | null> {
-    const { db } = await getFirebaseAdmin();
+    const db = getAdminDb();
     if (!db) return null;
 
     try {
@@ -18,10 +18,13 @@ export async function getEconomySettingsAction(): Promise<EconomySettings | null
         // If it doesn't exist, create it with default values
         const defaultSettings: EconomySettings = {
             rewardForGameWin: 50,
-            costForAITask: 10,
-            coinsPerRupee: 100, // 100 coins = 1 Rupee
+            rewardForPostCreation: 5,
+            rewardForCourseCompletion: 100,
             signupBonus: 100,
             referralBonus: 200,
+            costForAITask: 10,
+            coinsPerRupee: 100,
+            platformFeePercent: 15,
         };
         await docRef.set(defaultSettings);
         return defaultSettings;
@@ -33,8 +36,9 @@ export async function getEconomySettingsAction(): Promise<EconomySettings | null
 }
 
 export async function simulateEarningAction(idToken: string, points: number, description: string) {
-    const { auth, db } = await getFirebaseAdmin();
-    if (!auth || !db || !idToken || !points || !description) {
+    const auth = getAdminAuth();
+    const db = getAdminDb();
+    if (!idToken || !points || !description) {
         return { success: false, error: 'Invalid parameters provided.' };
     }
 
