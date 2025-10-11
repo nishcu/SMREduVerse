@@ -1,336 +1,110 @@
-/**
- * @fileoverview Firestore Security Rules.
- *
- * Core Philosophy:
- * This ruleset prioritizes strong authorization, defaulting to strict user-ownership for most data.
- * It leverages Firebase Authentication to ensure only authenticated users can access protected resources.
- * Data validation is minimized to allow for rapid prototyping and flexible data structures.
- *
- * Data Structure:
- * - Users: Data is organized under /users/{userId}, enabling user-specific access control.
- * - Top-Level Collections: Collections like /posts and /courses are generally public for reading but owner-restricted for writing.
- * - Partner Data: Data related to partners is stored under /partners/{partnerId}.
- *
- * Key Security Decisions:
- * - User Listing Disabled: Listing all users is not permitted to protect user privacy.
- * - Ambiguous Relationships: Any ambiguous relationships default to owner-only access.
- *
- * Denormalization for Authorization:
- * - User Profiles: The /users/{userId}/profile/{profileId} collection enforces that the 'id' field within the profile document must match the 'uid' in the path, ensuring data consistency and preventing unauthorized profile creation.
- */
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Requires the user to be signed in.
-     */
-    function isSignedIn() {
+    // Helper functions
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function isExistingOwner(uid) {
+      return isOwner(uid) && resource.data.id == uid;
+    }
+
+    function isAuthenticated() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the request is made by the owner of the document.
-     * @param {string} userId - The user ID to check against.
-     * @return {boolean} True if the user ID matches the authenticated user's ID, false otherwise.
-     */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+    // App Settings: Admins should manage this, but for now allow authenticated read
+    match /app-settings/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Protect settings
+    }
+    
+    // Users: Public profile is readable, but only owner can write.
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
     }
 
-    /**
-     * @description Checks if the request is made by the existing owner of the document.
-     * @param {string} userId - The user ID to check against.
-     * @return {boolean} True if the user ID matches the authenticated user's ID and the document exists, false otherwise.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Allows access to application economy settings.
-     * @path /app-settings/economy
-     * @allow (get, list) if true;
-     * @deny (create, update, delete) if false;
-     * @principle Allows public read-only access to economy settings.
-     */
-    match /app-settings/economy {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Allows access to subscription plans.
-     * @path /app-settings/monetization/subscription-plans/{planId}
-     * @allow (get, list) if true;
-     * @deny (create, update, delete) if false;
-     * @principle Allows public read-only access to subscription plans.
-     */
-    match /app-settings/monetization/subscription-plans/{planId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Allows access to coin bundles.
-     * @path /app-settings/monetization/coin-bundles/{bundleId}
-     * @allow (get, list) if true;
-     * @deny (create, update, delete) if false;
-     * @principle Allows public read-only access to coin bundles.
-     */
-    match /app-settings/monetization/coin-bundles/{bundleId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Allows access to quests.
-     * @path /quests/{questId}
-     * @allow get, list: if true;
-     * @deny create, update, delete: if false;
-     * @principle Allows public read-only access to quests.
-     */
-    match /quests/{questId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Allows access to courses.
-     * @path /courses/{courseId}
-     * @allow get, list: if true;
-     * @deny create, update, delete: if false;
-     * @principle Allows public read-only access to courses.
-     */
-    match /courses/{courseId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Allows access to chapters within a course.
-     * @path /courses/{courseId}/chapters/{chapterId}
-     * @allow get, list: if true;
-     * @deny create, update, delete: if false;
-     * @principle Allows public read-only access to chapters.
-     */
-    match /courses/{courseId}/chapters/{chapterId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Allows access to lessons within a chapter.
-     * @path /courses/{courseId}/chapters/{chapterId}/lessons/{lessonId}
-     * @allow get, list: if true;
-     * @deny create, update, delete: if false;
-     * @principle Allows public read-only access to lessons.
-     */
-    match /courses/{courseId}/chapters/{chapterId}/lessons/{lessonId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Manages user profile information.
-     * @path /users/{uid}/profile/{profileId}
-     * @allow get: if true;
-     * @allow list: if isOwner(uid);
-     * @allow create: if isOwner(uid) && request.resource.data.id == uid;
-     * @allow update: if isExistingOwner(uid) && request.resource.data.id == resource.data.id;
-     * @allow delete: if isExistingOwner(uid);
-     * @principle Enforces document ownership for writes and validates the relationship between the path and document data.
-     */
     match /users/{uid}/profile/{profileId} {
-      allow get: if true;
-      allow list: if isOwner(uid);
-      allow create: if isOwner(uid) && request.resource.data.id == uid;
-      allow update: if isExistingOwner(uid) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(uid);
+      allow get: if isAuthenticated();
+      allow list, create, update, delete: if isOwner(uid);
+    }
+    
+    // User-specific subcollections can only be accessed by the owner
+    match /users/{uid}/{collection}/{docId} {
+      allow read, write: if isOwner(uid);
     }
 
-    /**
-     * @description Manages user enrollments in courses.
-     * @path /users/{uid}/enrollments/{courseId}
-     * @allow get: if isOwner(uid);
-     * @allow list: if isOwner(uid);
-     * @allow create: if isOwner(uid);
-     * @allow update: if isExistingOwner(uid);
-     * @allow delete: if isExistingOwner(uid);
-     * @principle Restricts access to a user's own enrollment data.
-     */
-    match /users/{uid}/enrollments/{courseId} {
-      allow get: if isOwner(uid);
-      allow list: if isOwner(uid);
-      allow create: if isOwner(uid);
-      allow update: if isExistingOwner(uid);
-      allow delete: if isExistingOwner(uid);
+    // Public Collections: Readable by any authenticated user
+    match /courses/{courseId} {
+      allow read: if isAuthenticated();
+      // Only the instructor can create/update the course
+      allow write: if isAuthenticated() && request.auth.uid == resource.data.instructorId;
+      
+      match /chapters/{chapterId} {
+        allow read: if isAuthenticated();
+        // Check instructorId on the parent course for chapter writes
+        allow write: if isAuthenticated() && get(/databases/$(database)/documents/courses/$(courseId)).data.instructorId == request.auth.uid;
+        
+        match /lessons/{lessonId} {
+           allow read: if isAuthenticated();
+           allow write: if isAuthenticated() && get(/databases/$(database)/documents/courses/$(courseId)).data.instructorId == request.auth.uid;
+        }
+      }
     }
 
-    /**
-     * @description Manages user quest progress.
-     * @path /users/{uid}/quest-progress/main
-     * @allow get: if isOwner(uid);
-     * @allow list: if isOwner(uid);
-     * @allow create: if isOwner(uid);
-     * @allow update: if isExistingOwner(uid);
-     * @allow delete: if isExistingOwner(uid);
-     * @principle Restricts access to a user's own quest progress.
-     */
-    match /users/{uid}/quest-progress/main {
-      allow get: if isOwner(uid);
-      allow list: if isOwner(uid);
-      allow create: if isOwner(uid);
-      allow update: if isExistingOwner(uid);
-      allow delete: if isExistingOwner(uid);
-    }
-
-    /**
-     * @description Allows access to posts.
-     * @path /posts/{postId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @principle Allows public read-only access to posts.
-     */
     match /posts/{postId} {
-      allow get, list: if true;
-      allow create: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
-      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow read: if isAuthenticated();
+      // Allow create for any authenticated user
+      allow create: if isAuthenticated() && request.resource.data.authorUid == request.auth.uid;
+      // Allow update/delete only for the post author
+      allow update, delete: if isAuthenticated() && resource.data.authorUid == request.auth.uid;
     }
-
-    /**
-     * @description Manages user transactions.
-     * @path /users/{uid}/transactions/{transactionId}
-     * @allow get: if isOwner(uid);
-     * @allow list: if isOwner(uid);
-     * @allow create: if isOwner(uid);
-     * @allow update: if isExistingOwner(uid);
-     * @allow delete: if isExistingOwner(uid);
-     * @principle Restricts access to a user's own transaction history.
-     */
-    match /users/{uid}/transactions/{transactionId} {
-      allow get: if isOwner(uid);
-      allow list: if isOwner(uid);
-      allow create: if isOwner(uid);
-      allow update: if isExistingOwner(uid);
-      allow delete: if isExistingOwner(uid);
+    
+    match /quests/{questId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Should be managed by admins
     }
-
-    /**
-     * @description Allows access to study rooms.
-     * @path /study-rooms/{roomId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @principle Allows public read-only access to study rooms.
-     */
+    
     match /study-rooms/{roomId} {
-      allow get, list: if true;
-      allow create: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
-      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && request.resource.data.hostId == request.auth.uid;
+        allow update: if isAuthenticated() && resource.data.hostId == request.auth.uid;
     }
 
-    /**
-     * @description Allows access to contests.
-     * @path /contests/{contestId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @principle Allows public read-only access to contests.
-     */
     match /contests/{contestId} {
-      allow get, list: if true;
-      allow create: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
-      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+        allow read: if isAuthenticated();
+        allow write: if false; // Should be managed by admins
     }
 
-    /**
-     * @description Manages user coupons.
-     * @path /users/{uid}/coupons/{couponId}
-     * @allow get: if isOwner(uid);
-     * @allow list: if isOwner(uid);
-     * @allow create: if isOwner(uid);
-     * @allow update: if isExistingOwner(uid);
-     * @allow delete: if isExistingOwner(uid);
-     * @principle Restricts access to a user's own coupons.
-     */
-    match /users/{uid}/coupons/{couponId} {
-      allow get: if isOwner(uid);
-      allow list: if isOwner(uid);
-      allow create: if isOwner(uid);
-      allow update: if isExistingOwner(uid);
-      allow delete: if isExistingOwner(uid);
-    }
-
-    /**
-     * @description Allows access to partners.
-     * @path /partners/{partnerId}
-     * @allow get, list: if true;
-     * @allow create: if false; // TODO: Add role validation for admin users.
-     * @allow update: if false; // TODO: Add role validation for admin users.
-     * @allow delete: if false; // TODO: Add role validation for admin users.
-     * @principle Allows public read-only access to partners.
-     */
+    // Partners: Publicly readable
     match /partners/{partnerId} {
-      allow get, list: if true;
-      allow create: if false; // TODO: Add role validation for admin users.
-      allow update: if false; // TODO: Add role validation for admin users.
-      allow delete: if false; // TODO: Add role validation for admin users.
-    }
+      allow read: if isAuthenticated();
+      allow write: if false; // Should be managed by admins
 
-    /**
-     * @description Allows access to courses offered by a specific partner.
-     * @path /partners/{partnerId}/courses/{courseId}
-     * @allow get, list: if true;
-     * @allow create: if false; // TODO: Add role validation for partner admins.
-     * @allow update: if false; // TODO: Add role validation for partner admins.
-     * @allow delete: if false; // TODO: Add role validation for partner admins.
-     * @principle Allows public read-only access to partner courses.
-     */
-    match /partners/{partnerId}/courses/{courseId} {
-      allow get, list: if true;
-      allow create: if false; // TODO: Add role validation for partner admins.
-      allow update: if false; // TODO: Add role validation for partner admins.
-      allow delete: if false; // TODO: Add role validation for partner admins.
+      match /{collection}/{docId} {
+        allow read: if isAuthenticated();
+        allow write: if false; // Should be managed by admins
+      }
     }
-
-    /**
-     * @description Allows access to products offered by a specific partner.
-     * @path /partners/{partnerId}/products/{productId}
-     * @allow get, list: if true;
-     * @allow create: if false; // TODO: Add role validation for partner admins.
-     * @allow update: if false; // TODO: Add role validation for partner admins.
-     * @allow delete: if false; // TODO: Add role validation for partner admins.
-     * @principle Allows public read-only access to partner products.
-     */
-    match /partners/{partnerId}/products/{productId} {
-      allow get, list: if true;
-      allow create: if false; // TODO: Add role validation for partner admins.
-      allow update: if false; // TODO: Add role validation for partner admins.
-      allow delete: if false; // TODO: Add role validation for partner admins.
-    }
-
-    /**
-     * @description Allows access to partner applications.
-     * @path /partner-applications/{applicationId}
-     * @allow get, list: if false; // TODO: Add role validation for admin users.
-     * @allow create: if isSignedIn(); // TODO: Add more validation for partner applications.
-     * @allow update: if false; // TODO: Add role validation for admin users.
-     * @allow delete: if false; // TODO: Add role validation for admin users.
-     * @principle Requires authentication to create partner applications.
-     */
+    
+    // Partner Applications: Users can create their own application
     match /partner-applications/{applicationId} {
-      allow get, list: if false; // TODO: Add role validation for admin users.
-      allow create: if isSignedIn(); // TODO: Add more validation for partner applications.
-      allow update: if false; // TODO: Add role validation for admin users.
-      allow delete: if false; // TODO: Add role validation for admin users.
+        allow read: if isAuthenticated(); // Allow admins/users to read applications
+        allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if false; // Managed by backend/admins
+    }
+    
+     // Chat: Participants can read/write messages
+    match /chats/{chatId} {
+      allow read, update: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      allow create: if isAuthenticated() && request.auth.uid in request.resource.data.participants;
+      
+      match /messages/{messageId} {
+        allow read, create: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+      }
     }
   }
 }
