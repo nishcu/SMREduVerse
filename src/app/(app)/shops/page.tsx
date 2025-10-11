@@ -8,6 +8,7 @@ import { CreateProductDialog } from '@/components/create-product-dialog';
 import type { PartnerProduct } from '@/lib/types';
 import { getAllProductsAction } from './actions';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 
 function ProductCardSkeleton() {
     return (
