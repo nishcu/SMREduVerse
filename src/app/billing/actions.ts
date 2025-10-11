@@ -2,12 +2,11 @@
 'use server';
 
 import type { SubscriptionPlan, CoinBundle } from '@/lib/types';
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminDb } from '@/lib/firebase-admin-new';
 
 
 export async function getSubscriptionPlansAction(): Promise<SubscriptionPlan[]> {
-    const { db } = await getFirebaseAdmin();
-    if (!db) return [];
+    const db = getAdminDb();
     try {
         const snapshot = await db.collection('app-settings/monetization/subscription-plans').get();
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SubscriptionPlan));
@@ -18,8 +17,7 @@ export async function getSubscriptionPlansAction(): Promise<SubscriptionPlan[]> 
 }
 
 export async function getCoinBundlesAction(): Promise<CoinBundle[]> {
-     const { db } = await getFirebaseAdmin();
-    if (!db) return [];
+    const db = getAdminDb();
     try {
         const snapshot = await db.collection('app-settings/monetization/coin-bundles').orderBy('coins', 'asc').get();
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CoinBundle));

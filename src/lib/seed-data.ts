@@ -1,6 +1,6 @@
 
 'use server';
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminDb } from '@/lib/firebase-admin-new';
 import type { Quest } from '@/lib/types';
 
 const quests: Omit<Quest, 'id'>[] = [
@@ -42,10 +42,7 @@ const quests: Omit<Quest, 'id'>[] = [
 ];
 
 export async function seedQuests() {
-  const { db } = getFirebaseAdmin();
-  if (!db) {
-    throw new Error('Firestore not available');
-  }
+  const db = getAdminDb();
 
   const questsCollection = db.collection('quests');
   const batch = db.batch();

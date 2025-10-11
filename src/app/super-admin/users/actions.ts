@@ -1,14 +1,13 @@
 
 'use server';
 
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminDb } from '@/lib/firebase-admin-new';
 import { revalidatePath } from 'next/cache';
 import type { User } from '@/lib/types';
 import { Timestamp } from 'firebase-admin/firestore';
 
 export async function getUsersAction(): Promise<User[]> {
-    const { db } = await getFirebaseAdmin();
-    if (!db) return [];
+    const db = getAdminDb();
 
     try {
         const usersSnapshot = await db.collectionGroup('profile').get();
@@ -27,8 +26,7 @@ export async function getUsersAction(): Promise<User[]> {
 }
 
 export async function updateUserAdminStatusAction(uid: string, isSuperAdmin: boolean) {
-    const { db } = await getFirebaseAdmin();
-    if (!db) return { success: false, error: 'Database not initialized' };
+    const db = getAdminDb();
 
     try {
         const userRef = db.doc(`users/${uid}/profile/${uid}`);

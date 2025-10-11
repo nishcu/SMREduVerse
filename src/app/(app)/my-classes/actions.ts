@@ -1,6 +1,7 @@
+
 'use server';
 
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminDb } from '@/lib/firebase-admin-new';
 import { FieldValue } from 'firebase-admin/firestore';
 import { revalidatePath } from 'next/cache';
 
@@ -13,10 +14,7 @@ export async function toggleLessonCompletionAction(
   if (!userId || !courseId || !lessonId) {
     return { success: false, error: 'Invalid input' };
   }
-  const { db } = await getFirebaseAdmin();
-  if (!db) {
-    return { success: false, error: 'Database not initialized' };
-  }
+  const db = getAdminDb();
   
   const enrollmentRef = db.doc(`users/${userId}/enrollments/${courseId}`);
 
@@ -42,11 +40,7 @@ export async function toggleLessonCompletionAction(
 export async function updateLastAccessedAction(userId: string, courseId: string) {
     if (!userId || !courseId) return;
 
-    const { db } = await getFirebaseAdmin();
-    if (!db) {
-        console.error("Database not initialized for updateLastAccessedAction");
-        return;
-    }
+    const db = getAdminDb();
 
     const enrollmentRef = db.doc(`users/${userId}/enrollments/${courseId}`);
     try {

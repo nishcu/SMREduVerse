@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminDb } from '@/lib/firebase-admin-new';
 import { FieldValue } from 'firebase-admin/firestore';
 import { revalidatePath } from 'next/cache';
 
@@ -10,10 +10,7 @@ function createChatId(uid1: string, uid2: string): string {
 }
 
 export async function getOrCreateChatAction(uid1: string, uid2: string) {
-    const { db } = getFirebaseAdmin();
-    if (!db) {
-        return { success: false, error: 'Database not initialized.' };
-    }
+    const db = getAdminDb();
 
     if (!uid1 || !uid2) {
         return { success: false, error: 'Both user IDs must be provided.' };

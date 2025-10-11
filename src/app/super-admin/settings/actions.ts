@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from 'zod';
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminDb } from '@/lib/firebase-admin-new';
 import { revalidatePath } from 'next/cache';
 import type { EconomySettings } from '@/lib/types';
 
@@ -23,8 +23,7 @@ const EconomySettingsSchema = z.object({
 });
 
 export async function getEconomySettingsAction(): Promise<EconomySettings | null> {
-    const { db } = await getFirebaseAdmin();
-    if (!db) return null;
+    const db = getAdminDb();
 
     try {
         const docRef = db.doc('app-settings/economy');
@@ -54,10 +53,7 @@ export async function getEconomySettingsAction(): Promise<EconomySettings | null
 
 
 export async function saveEconomySettingsAction(prevState: any, formData: FormData) {
-    const { db } = await getFirebaseAdmin();
-    if (!db) {
-        return { success: false, error: 'Database not initialized' };
-    }
+    const db = getAdminDb();
 
     const validatedFields = EconomySettingsSchema.safeParse({
         rewardForGameWin: formData.get('rewardForGameWin'),

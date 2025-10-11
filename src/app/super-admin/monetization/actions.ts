@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from 'zod';
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminDb } from '@/lib/firebase-admin-new';
 import { revalidatePath } from 'next/cache';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { SubscriptionPlan, CoinBundle } from '@/lib/types';
@@ -24,15 +24,13 @@ const BundleSchema = z.object({
 
 // Subscription Plan Actions
 export async function getSubscriptionPlansAction(): Promise<SubscriptionPlan[]> {
-    const { db } = await getFirebaseAdmin();
-    if (!db) return [];
+    const db = getAdminDb();
     const snapshot = await db.collection('app-settings/monetization/subscription-plans').get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SubscriptionPlan));
 }
 
 export async function saveSubscriptionPlanAction(prevState: any, formData: FormData) {
-    const { db } = await getFirebaseAdmin();
-    if (!db) return { success: false, error: 'Database not initialized.' };
+    const db = getAdminDb();
 
     const id = formData.get('id') as string | null;
     const features = formData.getAll('features').map(String).filter(f => f.trim() !== '');
@@ -64,8 +62,7 @@ export async function saveSubscriptionPlanAction(prevState: any, formData: FormD
 }
 
 export async function deleteSubscriptionPlanAction(id: string) {
-    const { db } = await getFirebaseAdmin();
-    if (!db) return { success: false, error: 'Database not initialized.' };
+    const db = getAdminDb();
     try {
         await db.doc(`app-settings/monetization/subscription-plans/${id}`).delete();
         revalidatePath('/super-admin/monetization');
@@ -79,16 +76,14 @@ export async function deleteSubscriptionPlanAction(id: string) {
 
 // Coin Bundle Actions
 export async function getCoinBundlesAction(): Promise<CoinBundle[]> {
-    const { db } = await getFirebaseAdmin();
-    if (!db) return [];
+    const db = getAdminDb();
     const snapshot = await db.collection('app-settings/monetization/coin-bundles').orderBy('coins', 'asc').get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CoinBundle));
 }
 
 
 export async function saveCoinBundleAction(prevState: any, formData: FormData) {
-    const { db } = await getFirebaseAdmin();
-    if (!db) return { success: false, error: 'Database not initialized.' };
+    const db = getAdminDb();
 
     const id = formData.get('id') as string | null;
     
@@ -117,8 +112,7 @@ export async function saveCoinBundleAction(prevState: any, formData: FormData) {
 }
 
 export async function deleteCoinBundleAction(id: string) {
-    const { db } = await getFirebaseAdmin();
-    if (!db) return { success: false, error: 'Database not initialized.' };
+    const db = getAdminDb();
     try {
         await db.doc(`app-settings/monetization/coin-bundles/${id}`).delete();
         revalidatePath('/super-admin/monetization');

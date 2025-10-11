@@ -1,8 +1,9 @@
+
 'use server';
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin-new';
 import { FieldValue } from 'firebase-admin/firestore';
 
 const PostSchema = z.object({
@@ -14,15 +15,8 @@ const PostSchema = z.object({
 });
 
 export async function createPostAction(prevState: any, formData: FormData) {
-  const { auth, db } = getFirebaseAdmin();
-
-  if (!auth || !db) {
-    return {
-      success: false,
-      error: 'Firebase Admin SDK not initialized. Please check server configuration.',
-      errors: null,
-    };
-  }
+  const auth = getAdminAuth();
+  const db = getAdminDb();
   
   const validatedFields = PostSchema.safeParse({
     content: formData.get('content'),

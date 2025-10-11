@@ -1,7 +1,8 @@
+
 'use server';
 
 import { z } from 'zod';
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin-new';
 import { GenerateCreativeTasksInputSchema, generateCreativeTasks } from '@/ai/flows/generate-creative-tasks';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
@@ -17,10 +18,8 @@ type GenerateTaskState = {
 
 
 export async function generateTaskAction(prevState: any, data: FormData): Promise<GenerateTaskState> {
-  const { auth, db } = getFirebaseAdmin();
-  if (!auth || !db) {
-    return { error: 'Server configuration error.' };
-  }
+  const auth = getAdminAuth();
+  const db = getAdminDb();
   
   const formValues = {
     idToken: data.get('idToken'),
@@ -87,10 +86,8 @@ export async function generateTaskAction(prevState: any, data: FormData): Promis
 
 
 export async function awardDailySessionPointsAction(idToken: string) {
-    const { auth, db } = getFirebaseAdmin();
-    if (!auth || !db) {
-      return { success: false, error: 'Server configuration error.' };
-    }
+    const auth = getAdminAuth();
+    const db = getAdminDb();
   
     try {
       const decodedToken = await auth.verifyIdToken(idToken);

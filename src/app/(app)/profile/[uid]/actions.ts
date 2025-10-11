@@ -1,8 +1,9 @@
+
 'use server';
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin-new';
 import type { EducationHistory } from '@/lib/types';
 
 const EducationHistorySchema = z.object({
@@ -29,10 +30,8 @@ const UpdateProfileSchema = z.object({
 });
 
 export async function updateUserProfileAction(prevState: any, formData: FormData) {
-  const { auth, db } = getFirebaseAdmin();
-  if (!auth || !db) {
-    return { success: false, error: 'Server configuration error.' };
-  }
+  const auth = getAdminAuth();
+  const db = getAdminDb();
 
   const interests = formData.getAll('interests[]');
   const sports = formData.getAll('sports[]');

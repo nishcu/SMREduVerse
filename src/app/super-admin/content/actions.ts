@@ -1,12 +1,12 @@
+
 'use server';
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminDb } from '@/lib/firebase-admin-new';
 import { revalidatePath } from 'next/cache';
 import type { Post } from '@/lib/types';
 import { Timestamp } from 'firebase-admin/firestore';
 
 export async function getPostsAction(): Promise<Post[]> {
-    const { db } = getFirebaseAdmin();
-    if (!db) return [];
+    const db = getAdminDb();
 
     try {
         const snapshot = await db.collection('posts').orderBy('createdAt', 'desc').get();
@@ -22,10 +22,7 @@ export async function getPostsAction(): Promise<Post[]> {
 }
 
 export async function deletePostAction(id: string) {
-    const { db } = getFirebaseAdmin();
-    if (!db) {
-        return { success: false, error: 'Database not initialized' };
-    }
+    const db = getAdminDb();
 
     try {
         await db.collection('posts').doc(id).delete();

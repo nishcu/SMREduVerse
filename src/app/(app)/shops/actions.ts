@@ -1,14 +1,11 @@
 
 'use server';
 
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminDb } from '@/lib/firebase-admin-new';
 import type { PartnerProduct } from '@/lib/types';
 
 export async function getAllProductsAction(): Promise<{ success: boolean; data?: PartnerProduct[]; error?: string }> {
-  const { db } = await getFirebaseAdmin();
-  if (!db) {
-    return { success: false, error: 'Database not initialized.' };
-  }
+  const db = getAdminDb();
   
   try {
     const snapshot = await db.collectionGroup('products').get();

@@ -1,15 +1,12 @@
 
 'use server';
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminDb } from '@/lib/firebase-admin-new';
 import type { Partner, PartnerCourse, PartnerProduct, Contest } from '@/lib/types';
 import { Timestamp } from 'firebase-admin/firestore';
 
 
 export async function getAllPartnersAction(): Promise<{ success: boolean; data?: Partner[]; error?: string }> {
-  const { db } = await getFirebaseAdmin();
-  if (!db) {
-    return { success: false, error: 'Database not initialized.' };
-  }
+  const db = getAdminDb();
   
   try {
     const snapshot = await db.collection('partners').get();
@@ -31,10 +28,7 @@ export async function getPartnerDataAction(partnerId: string): Promise<{
     };
     error?: string;
 }> {
-    const { db } = await getFirebaseAdmin();
-    if (!db) {
-        return { success: false, error: 'Database not initialized.' };
-    }
+    const db = getAdminDb();
 
     try {
         const partnerRef = db.collection('partners').doc(partnerId);
