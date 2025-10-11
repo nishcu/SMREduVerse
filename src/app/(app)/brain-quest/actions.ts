@@ -5,8 +5,6 @@ import { z } from 'zod';
 import { getFirebaseAdmin } from '@/lib/firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { FieldValue } from 'firebase-admin/firestore';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { errorEmitter } from '@/firebase/error-emitter';
 
 const questActionSchema = z.object({
   idToken: z.string(),
@@ -42,13 +40,7 @@ export async function completeQuestAction(formData: FormData) {
     revalidatePath('/brain-quest');
     return { success: true };
   } catch (error: any) {
-    const permissionError = new FirestorePermissionError({
-        path: `users/${uid}/quest-progress/main`,
-        operation: 'write',
-        requestResourceData: { completedQuests: [questId] },
-        auth: { uid },
-    });
-    errorEmitter.emit('permission-error', permissionError);
+    console.error(`Error completing quest for user ${uid}:`, error);
     return { success: false, error: error.message || 'Failed to complete quest.' };
   }
 }
@@ -76,14 +68,8 @@ export async function resetProgressAction(formData: FormData) {
       revalidatePath('/brain-quest');
       return { success: true };
     } catch (error: any)      {
-      const permissionError = new FirestorePermissionError({
-        path: `users/${uid}/quest-progress/main`,
-        operation: 'write',
-        requestResourceData: { completedQuests: [] },
-        auth: { uid },
-      });
-      errorEmitter.emit('permission-error', permissionError);
-      return { success: false, error: error.message || 'Failed to reset progress.' };
+        console.error(`Error resetting progress for user ${uid}:`, error);
+        return { success: false, error: error.message || 'Failed to reset progress.' };
     }
   }
 
