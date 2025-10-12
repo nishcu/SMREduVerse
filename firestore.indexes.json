@@ -1,4 +1,3 @@
-
 {
   "indexes": [
     {
@@ -11,15 +10,9 @@
     },
     {
       "collectionGroup": "posts",
-      "queryScope": "COLLECTION_GROUP",
+      "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "transactions",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
+        { "fieldPath": "author.uid", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
@@ -33,30 +26,16 @@
     },
     {
       "collectionGroup": "courses",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-     {
-      "collectionGroup": "courses",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
         { "fieldPath": "instructorId", "order": "ASCENDING" }
       ]
     },
     {
-      "collectionGroup": "study-rooms",
-      "queryScope": "COLLECTION",
+      "collectionGroup": "courses",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "contests",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "startDate", "order": "DESCENDING" }
+        { "fieldPath": "partnerId", "order": "ASCENDING" }
       ]
     },
     {
@@ -75,7 +54,7 @@
       ]
     },
     {
-      "collectionGroup": "courses",
+      "collectionGroup": "products",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
         { "fieldPath": "partnerId", "order": "ASCENDING" }
@@ -85,7 +64,8 @@
       "collectionGroup": "products",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
-        { "fieldPath": "partnerId", "order": "ASCENDING" }
+        { "fieldPath": "category", "order": "ASCENDING" },
+        { "fieldPath": "price", "order": "ASCENDING" }
       ]
     },
     {
@@ -99,14 +79,8 @@
       "collectionGroup": "profile",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
-        { "fieldPath": "followersCount", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "profile",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        { "fieldPath": "isTutor", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" }
       ]
     }
   ],
