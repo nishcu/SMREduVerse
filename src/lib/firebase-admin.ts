@@ -34,11 +34,21 @@ function getFirebaseAdmin() {
       throw new Error(`Missing environment variables: ${missingVars.join(', ')}`);
     }
     
+    // Normalize private key for various env formats (Vercel, Windows, etc.)
+    const normalizedPrivateKey = requiredVars.privateKey!
+      // strip surrounding quotes if present
+      .replace(/^"|"$/g, '')
+      // convert escaped newlines to actual newlines
+      .replace(/\\n/g, '\n')
+      // normalize Windows newlines
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n');
+
     app = admin.initializeApp({
       credential: admin.credential.cert({
         projectId: requiredVars.projectId!,
         clientEmail: requiredVars.clientEmail!,
-        privateKey: requiredVars.privateKey!.replace(/\\n/g, '\n'),
+        privateKey: normalizedPrivateKey,
       }),
       databaseURL: `https://${requiredVars.projectId}.firebaseio.com`,
     });

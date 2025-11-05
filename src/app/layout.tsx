@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/contexts/auth-context';
 import { Toaster } from '@/components/ui/toaster';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -24,10 +25,12 @@ export default function RootLayout({
         <meta name="theme-color" content="#3B3D91" />
       </head>
       <body className="font-body antialiased">
-        <AuthProvider>
-          {children}
-          <Toaster />
-        </AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            {children}
+            <Toaster />
+          </AuthProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

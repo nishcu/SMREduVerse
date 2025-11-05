@@ -5,6 +5,9 @@ import { getSubscriptionPlansAction, getCoinBundlesAction } from './actions';
 import { PlansClient } from './plans-client';
 import { BundlesClient } from './bundles-client';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function MonetizationPage() {
     const [plans, bundles] = await Promise.all([
         getSubscriptionPlansAction(),
