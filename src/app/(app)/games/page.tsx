@@ -17,6 +17,7 @@ import { HangmanGame } from '@/components/games/hangman-game';
 import { FocusTapsGame } from '@/components/games/focus-taps-game';
 import { WordShuffleGame } from '@/components/games/word-shuffle-game';
 import { SudokuGame } from '@/components/games/sudoku-game';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 const games = [
   {
@@ -98,7 +99,7 @@ export default function GamesPage() {
       <Sheet open={!!selectedGame} onOpenChange={(open) => !open && setSelectedGame(null)}>
         <SheetContent className="w-full sm:max-w-2xl lg:max-w-4xl">
           {selectedGame && (
-            <>
+            <ErrorBoundary onReset={() => setSelectedGame(null)}>
               <SheetHeader>
                 <SheetTitle className="text-2xl font-headline">{selectedGame.title}</SheetTitle>
                 <SheetDescription>{selectedGame.description}</SheetDescription>
@@ -106,7 +107,7 @@ export default function GamesPage() {
               <div className="mt-4 h-[calc(100vh-8rem)] rounded-lg bg-secondary p-4">
                 {selectedGame.component}
               </div>
-            </>
+            </ErrorBoundary>
           )}
         </SheetContent>
       </Sheet>
