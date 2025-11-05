@@ -37,15 +37,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setLoading(true);
       if (user) {
+        // Set Firebase user immediately for instant UI update
         setFirebaseUser(user);
-        const userRef = doc(db, `users/${user.uid}/profile/${user.uid}`);
+        setLoading(false); // Stop loading immediately - don't wait for profile
         
-        // Store idToken in a cookie
+        // Store idToken in a cookie (non-blocking)
         user.getIdToken().then(token => {
             document.cookie = `idToken=${token}; path=/; max-age=3600`; // Expires in 1 hour
+        }).catch(() => {
+          // Silent fail - token will be fetched when needed
         });
+        
+        // Fetch profile in background (non-blocking)
+        const userRef = doc(db, `users/${user.uid}/profile/${user.uid}`);
         
         try {
           const userSnap = await getDoc(userRef);
@@ -85,19 +90,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               sports: [],
             };
             
-            await setDoc(userRef, { ...newUser, createdAt: serverTimestamp() });
+            // Create profile in background - don't await
+            setDoc(userRef, { ...newUser, createdAt: serverTimestamp() }).catch(err => {
+              console.error("Error creating user profile:", err);
+            });
+            
+            // Set user immediately with new profile data
             setUser({ id: user.uid, ...newUser });
           }
         } catch (error: any) {
             console.error("Error fetching or creating user profile:", error);
             // Don't block login if profile creation fails, but log the error
+            // User can still use the app with basic Firebase user data
         }
       } else {
         setFirebaseUser(null);
         setUser(null);
+        setLoading(false);
         document.cookie = 'idToken=; path=/; max-age=0'; // Clear cookie on logout
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
