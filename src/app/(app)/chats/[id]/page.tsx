@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useDoc } from '@/firebase';
 import { db } from '@/lib/firebase';
 import type { Chat } from '@/lib/types';
@@ -110,20 +110,23 @@ export default function ChatPage() {
   const { data: presence, error: presenceError } = useDoc<any>(presenceRef);
   const isOnline = presence?.status === 'online' && !presenceError;
 
-  const chatDescription = useMemo(() => {
+  // Use state to prevent hydration mismatch with date formatting
+  const [chatDescription, setChatDescription] = useState<string>('');
+
+  useEffect(() => {
     if (chat.type === 'group') {
-      return (
-        chat.description || `Group chat with ${chat.participants.length} members`
-      );
+      setChatDescription(chat.description || `Group chat with ${chat.participants.length} members`);
+      return;
     }
     // If presence data is not available (permission error), just show offline
     if (presenceError || !presence) {
-      return 'Offline';
+      setChatDescription('Offline');
+      return;
     }
     const statusText = isOnline ? 'Online' : presence?.lastSeen 
       ? `Last seen ${formatDistanceToNow(presence.lastSeen.toDate(), { addSuffix: true })}`
       : 'Offline';
-    return statusText;
+    setChatDescription(statusText);
   }, [chat, isOnline, presence, presenceError]);
 
   return (
