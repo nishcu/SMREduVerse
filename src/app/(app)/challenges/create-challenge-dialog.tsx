@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useActionState } from 'react';
+import { useState, useActionState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,7 +13,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Coins, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { getEconomySettingsAction } from '@/app/super-admin/settings/actions';
 
 const CreateChallengeSchema = z.object({
   title: z.string().min(1, 'Title is required.').max(100, 'Title must be 100 characters or less.'),
@@ -42,6 +44,17 @@ export function CreateChallengeDialog({ isOpen, onOpenChange }: CreateChallengeD
   const { toast } = useToast();
   const [state, formAction, isPending] = useActionState(createChallengeAction, { success: false, error: null });
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [hostCost, setHostCost] = useState<number | null>(null);
+  
+  useEffect(() => {
+    if (isOpen) {
+      getEconomySettingsAction().then(settings => {
+        if (settings) {
+          setHostCost(settings.costToHostChallenge || 0);
+        }
+      });
+    }
+  }, [isOpen]);
 
   const form = useForm<CreateChallengeFormValues>({
     resolver: zodResolver(CreateChallengeSchema),
@@ -290,13 +303,22 @@ export function CreateChallengeDialog({ isOpen, onOpenChange }: CreateChallengeD
                 />
               </div>
             </div>
+            {hostCost !== null && hostCost > 0 && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="flex items-center gap-2">
+                  <Coins className="h-4 w-4 text-amber-500" />
+                  <span>Hosting this challenge will cost <strong>{hostCost} Knowledge Coins</strong></span>
+                </AlertDescription>
+              </Alert>
+            )}
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isPending}>
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create Challenge
+                Create Challenge {hostCost !== null && hostCost > 0 && `(${hostCost} coins)`}
               </Button>
             </DialogFooter>
           </form>

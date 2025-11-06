@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache';
 import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import type { LearningChallenge } from '@/lib/types';
+import { deductCoins, awardCoins } from '@/lib/coin-transactions';
+import { getEconomySettingsAction as getSettings } from '@/app/super-admin/settings/actions';
 
 const CreateChallengeSchema = z.object({
   idToken: z.string(),
@@ -94,6 +96,36 @@ export async function createChallengeAction(formData: FormData) {
 
     const userProfile = userProfileSnap.data()!;
 
+    // Get economy settings to check host fee
+    const economySettings = await getSettings();
+    if (!economySettings) {
+      return {
+        success: false,
+        error: 'Economy settings not found. Please contact support.',
+      };
+    }
+
+    // Deduct host fee
+    const hostFee = economySettings.costToHostChallenge || 0;
+    if (hostFee > 0) {
+      const balanceCheck = await deductCoins(
+        uid,
+        hostFee,
+        `Hosted Challenge: ${validatedFields.data.title}`,
+        {
+          activityType: 'challenge',
+          activityTitle: validatedFields.data.title,
+        }
+      );
+
+      if (!balanceCheck.success) {
+        return {
+          success: false,
+          error: balanceCheck.error || 'Insufficient coins to host challenge.',
+        };
+      }
+    }
+
     // Create challenge
     const challengeData = {
       title: validatedFields.data.title,
@@ -119,6 +151,7 @@ export async function createChallengeAction(formData: FormData) {
       endDate: endDate ? Timestamp.fromDate(new Date(endDate)) : null,
       rewards: validatedFields.data.rewards,
       leaderboard: [],
+      prizePool: 0, // Initialize prize pool
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };
@@ -181,6 +214,62 @@ export async function joinChallengeAction(challengeId: string, idToken: string) 
 
     const userProfile = userProfileSnap.data()!;
 
+    // Get economy settings to check join fee
+    const economySettings = await getSettings();
+    if (!economySettings) {
+      return {
+        success: false,
+        error: 'Economy settings not found. Please contact support.',
+      };
+    }
+
+    // Deduct join fee from participant
+    const joinFee = economySettings.costToJoinChallenge || 0;
+    if (joinFee > 0) {
+      const balanceCheck = await deductCoins(
+        uid,
+        joinFee,
+        `Joined Challenge: ${challenge.title}`,
+        {
+          activityId: challengeId,
+          activityType: 'challenge',
+          activityTitle: challenge.title,
+        }
+      );
+
+      if (!balanceCheck.success) {
+        return {
+          success: false,
+          error: balanceCheck.error || 'Insufficient coins to join challenge.',
+        };
+      }
+    }
+
+    // Calculate prize pool contribution and host earnings
+    const participantFeePercent = economySettings.participantFeePercent || 0;
+    const hostEarning = joinFee > 0 ? Math.floor(joinFee * participantFeePercent / 100) : 0;
+    const prizePoolContribution = joinFee - hostEarning;
+
+    // Award coins to host if applicable
+    if (hostEarning > 0 && challenge.creator.uid !== uid) {
+      await awardCoins(
+        challenge.creator.uid,
+        hostEarning,
+        `Host earnings from: ${challenge.title}`,
+        {
+          activityId: challengeId,
+          activityType: 'challenge',
+          activityTitle: challenge.title,
+          recipientId: uid,
+          recipientName: userProfile.name || 'Anonymous',
+        }
+      );
+    }
+
+    // Update challenge prize pool (store in challenge document)
+    const currentPrizePool = challenge.prizePool || 0;
+    const newPrizePool = currentPrizePool + prizePoolContribution;
+
     // Add participant
     const participants = [...challenge.participants, uid];
     const participantDetails = {
@@ -196,6 +285,7 @@ export async function joinChallengeAction(challengeId: string, idToken: string) 
     await challengeRef.update({
       participants,
       participantDetails,
+      prizePool: newPrizePool,
       updatedAt: FieldValue.serverTimestamp(),
     });
 
@@ -264,7 +354,7 @@ export async function updateChallengeProgressAction(challengeId: string, progres
 
     const challenge = challengeSnap.data() as any;
 
-    // Check if user is participant
+    // Check if user is a participant
     if (!challenge.participants.includes(uid)) {
       return {
         success: false,
@@ -272,23 +362,22 @@ export async function updateChallengeProgressAction(challengeId: string, progres
       };
     }
 
-    // Update progress
+    // Update participant progress
     const participantDetails = {
       ...challenge.participantDetails,
       [uid]: {
         ...challenge.participantDetails[uid],
-        progress: Math.max(0, Math.min(100, progress)),
+        progress: Math.min(100, Math.max(0, progress)),
       },
     };
 
-    // Recalculate leaderboard
+    // Update leaderboard
     const leaderboard = Object.entries(participantDetails)
-      .map(([uidKey, details]: [string, any]) => ({
-        uid: uidKey,
+      .map(([uid, details]: [string, any]) => ({
+        uid,
         name: details.name,
         avatarUrl: details.avatarUrl,
         progress: details.progress,
-        rank: 0, // Will be set below
       }))
       .sort((a, b) => b.progress - a.progress)
       .map((entry, index) => ({
@@ -302,32 +391,17 @@ export async function updateChallengeProgressAction(challengeId: string, progres
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    // Create notification for top 3 participants when leaderboard changes
-    if (leaderboard.length > 0 && leaderboard[0].uid === uid) {
-      // Notify other top participants
-      const topParticipants = leaderboard.slice(0, 3).filter(p => p.uid !== uid && p.uid !== challenge.creator.uid);
-      for (const participant of topParticipants) {
-        const notificationRef = db.collection(`users/${participant.uid}/notifications`).doc();
-        await notificationRef.set({
-          type: 'challenge_progress',
-          actor: {
-            uid,
-            name: challenge.participantDetails[uid].name,
-            avatarUrl: challenge.participantDetails[uid].avatarUrl,
-          },
-          data: {
-            challengeId,
-          },
-          read: false,
-          createdAt: FieldValue.serverTimestamp(),
-        });
-      }
+    // Check if challenge should be completed
+    const endDate = challenge.endDate ? challenge.endDate.toDate() : null;
+    const shouldComplete = endDate && endDate <= new Date() && challenge.status !== 'completed';
+
+    if (shouldComplete) {
+      await completeChallengeAction(challengeId);
     }
 
     revalidatePath('/challenges');
     return {
       success: true,
-      leaderboard,
     };
   } catch (error: any) {
     console.error('Error updating challenge progress:', error);
@@ -338,53 +412,113 @@ export async function updateChallengeProgressAction(challengeId: string, progres
   }
 }
 
-export async function getChallengesAction(idToken?: string, limit: number = 20) {
+export async function completeChallengeAction(challengeId: string) {
   const db = getAdminDb();
-  const auth = idToken ? getAdminAuth() : null;
 
   try {
-    let uid: string | undefined;
-    if (idToken && auth) {
-      try {
-        const decodedToken = await auth.verifyIdToken(idToken);
-        uid = decodedToken.uid;
-      } catch (e) {
-        // Invalid token, continue without user context
+    const challengeRef = db.collection('challenges').doc(challengeId);
+    const challengeSnap = await challengeRef.get();
+
+    if (!challengeSnap.exists) {
+      return {
+        success: false,
+        error: 'Challenge not found.',
+      };
+    }
+
+    const challenge = challengeSnap.data() as any;
+
+    if (challenge.status === 'completed') {
+      return {
+        success: false,
+        error: 'Challenge already completed.',
+      };
+    }
+
+    // Get economy settings
+    const economySettings = await getSettings();
+    if (!economySettings) {
+      return {
+        success: false,
+        error: 'Economy settings not found.',
+      };
+    }
+
+    // Get sorted leaderboard (top 3)
+    const leaderboard = challenge.leaderboard || [];
+    const topThree = leaderboard.slice(0, 3);
+
+    const prizePool = challenge.prizePool || 0;
+
+    // Distribute prize pool and base rewards
+    if (topThree.length > 0 && prizePool > 0) {
+      // Calculate prize distribution percentages
+      const distribution = [
+        { percent: 50, reward: economySettings.rewardForChallengeWin || 100 },    // 1st: 50% of pool + base reward
+        { percent: 30, reward: economySettings.rewardForChallengeSecond || 50 }, // 2nd: 30% of pool + base reward
+        { percent: 20, reward: economySettings.rewardForChallengeThird || 25 },  // 3rd: 20% of pool + base reward
+      ];
+
+      for (let i = 0; i < topThree.length; i++) {
+        const winner = topThree[i];
+        const dist = distribution[i];
+        const prizeAmount = Math.floor(prizePool * dist.percent / 100);
+        const totalReward = prizeAmount + dist.reward;
+
+        await awardCoins(
+          winner.uid,
+          totalReward,
+          `Challenge Winner: ${challenge.title} (${i + 1 === 1 ? '1st' : i + 1 === 2 ? '2nd' : '3rd'} Place)`,
+          {
+            activityId: challengeId,
+            activityType: 'challenge',
+            activityTitle: challenge.title,
+          }
+        );
       }
     }
 
-    // Get active challenges
-    // Note: Using where().orderBy() requires an index, so we fetch without orderBy and sort in memory
-    const challengesSnapshot = await db
-      .collection('challenges')
-      .where('status', 'in', ['upcoming', 'active'])
-      .get();
-
-    let challenges = challengesSnapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
-        startDate: data.startDate?.toDate ? data.startDate.toDate().toISOString() : data.startDate,
-        endDate: data.endDate?.toDate ? data.endDate.toDate().toISOString() : data.endDate,
-        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
-        isJoined: uid ? data.participants?.includes(uid) : false,
-      };
+    // Mark challenge as completed
+    await challengeRef.update({
+      status: 'completed',
+      updatedAt: FieldValue.serverTimestamp(),
     });
 
-    // Sort by createdAt in memory (descending - newest first) and limit
-    challenges = challenges
-      .sort((a: any, b: any) => {
-        const aTime = typeof a.createdAt === 'string' 
-          ? new Date(a.createdAt).getTime() 
-          : a.createdAt?.toMillis?.() || 0;
-        const bTime = typeof b.createdAt === 'string'
-          ? new Date(b.createdAt).getTime()
-          : b.createdAt?.toMillis?.() || 0;
-        return bTime - aTime;
-      })
-      .slice(0, limit);
+    revalidatePath('/challenges');
+    return {
+      success: true,
+    };
+  } catch (error: any) {
+    console.error('Error completing challenge:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to complete challenge.',
+    };
+  }
+}
+
+export async function getChallengesAction(userId?: string) {
+  const db = getAdminDb();
+
+  try {
+    let query = db.collection('challenges');
+    
+    if (userId) {
+      query = query.where('participants', 'array-contains', userId);
+    }
+
+    const snapshot = await query.get();
+    const challenges = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    } as LearningChallenge));
+
+    // Sort by createdAt (newest first) - in memory to avoid index requirements
+    challenges.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
 
     return {
       success: true,
@@ -394,48 +528,29 @@ export async function getChallengesAction(idToken?: string, limit: number = 20) 
     console.error('Error fetching challenges:', error);
     return {
       success: false,
-      error: error.message || 'Failed to load challenges.',
+      error: error.message || 'Failed to fetch challenges.',
       challenges: [],
     };
   }
 }
 
-export async function getUserChallengesAction(idToken: string) {
-  const auth = getAdminAuth();
+export async function getUserChallengesAction(userId: string) {
   const db = getAdminDb();
 
   try {
-    const decodedToken = await auth.verifyIdToken(idToken);
-    const uid = decodedToken.uid;
-
-    // Get challenges where user is participant
-    // Note: Using where().orderBy() requires an index, so we fetch without orderBy and sort in memory
-    const challengesSnapshot = await db
-      .collection('challenges')
-      .where('participants', 'array-contains', uid)
+    const snapshot = await db.collection('challenges')
+      .where('participants', 'array-contains', userId)
       .get();
 
-    let challenges = challengesSnapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
-        startDate: data.startDate?.toDate ? data.startDate.toDate().toISOString() : data.startDate,
-        endDate: data.endDate?.toDate ? data.endDate.toDate().toISOString() : data.endDate,
-        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
-        userProgress: data.participantDetails?.[uid]?.progress || 0,
-      };
-    });
+    const challenges = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    } as LearningChallenge));
 
-    // Sort by createdAt in memory (descending - newest first)
-    challenges = challenges.sort((a: any, b: any) => {
-      const aTime = typeof a.createdAt === 'string' 
-        ? new Date(a.createdAt).getTime() 
-        : a.createdAt?.toMillis?.() || 0;
-      const bTime = typeof b.createdAt === 'string'
-        ? new Date(b.createdAt).getTime()
-        : b.createdAt?.toMillis?.() || 0;
+    // Sort by createdAt (newest first) - in memory
+    challenges.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
       return bTime - aTime;
     });
 
@@ -447,9 +562,8 @@ export async function getUserChallengesAction(idToken: string) {
     console.error('Error fetching user challenges:', error);
     return {
       success: false,
-      error: error.message || 'Failed to load your challenges.',
+      error: error.message || 'Failed to fetch user challenges.',
       challenges: [],
     };
   }
 }
-

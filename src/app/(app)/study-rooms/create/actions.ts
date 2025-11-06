@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { getFirebaseAdmin } from '@/lib/firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { deductCoins, awardCoins } from '@/lib/coin-transactions';
+import { getEconomySettingsAction as getSettings } from '@/app/super-admin/settings/actions';
 
 const StudyRoomSchema = z.object({
   name: z.string().min(1, 'Name cannot be empty.').max(100, 'Name must be 100 characters or less.'),
@@ -59,6 +61,36 @@ export async function createStudyRoomAction(prevState: any, formData: FormData):
         throw new Error('User profile not found.');
     }
     const userProfile = userProfileSnap.docs[0].data();
+
+    // Get economy settings to check host fee
+    const economySettings = await getSettings();
+    if (!economySettings) {
+      return {
+        success: false,
+        error: 'Economy settings not found. Please contact support.',
+      };
+    }
+
+    // Deduct host fee
+    const hostFee = economySettings.costToCreateStudyRoom || 0;
+    if (hostFee > 0) {
+      const balanceCheck = await deductCoins(
+        uid,
+        hostFee,
+        `Created Study Room: ${roomData.name}`,
+        {
+          activityType: 'study_room',
+          activityTitle: roomData.name,
+        }
+      );
+
+      if (!balanceCheck.success) {
+        return {
+          success: false,
+          error: balanceCheck.error || 'Insufficient coins to create study room.',
+        };
+      }
+    }
 
     const scheduledTimestamp = Timestamp.fromDate(new Date(roomData.scheduledAt));
 

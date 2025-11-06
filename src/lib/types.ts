@@ -199,9 +199,30 @@ export interface EconomySettings {
   // Spending
   costForAITask: number;
 
+  // NEW: Activity Participation Costs
+  costToJoinChallenge: number;        // Cost for participants to join challenge
+  costToHostChallenge: number;         // Cost for hosts to create challenge
+  costToJoinContest: number;           // Cost for participants to join contest
+  costToHostContest: number;           // Cost for hosts to create contest
+  costToJoinStudyRoom: number;         // Cost for participants to join study room
+  costToCreateStudyRoom: number;       // Cost for hosts to create study room
+  costToJoinGame: number;              // Cost for participants to join multiplayer game
+  
+  // NEW: Winner Rewards
+  rewardForChallengeWin: number;       // First place in challenge
+  rewardForChallengeSecond: number;    // Second place in challenge
+  rewardForChallengeThird: number;     // Third place in challenge
+  rewardForContestWin: number;         // First place in contest
+  rewardForContestSecond: number;      // Second place in contest
+  rewardForContestThird: number;       // Third place in contest
+  
+  // NEW: Host Earnings Configuration
+  hostEarningPercent: number;           // % of participant fees that host earns
+  participantFeePercent: number;        // % of entry fee that goes to host pool (rest goes to prize pool)
+  
   // Conversion & Commission
   coinsPerRupee: number;
-  platformFeePercent: number; // Commission on tutor earnings, partner sales, etc.
+  platformFeePercent: number;          // Platform commission on all earnings
 }
 
 export interface Reward {

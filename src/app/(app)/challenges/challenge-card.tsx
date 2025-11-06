@@ -10,10 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Trophy, Users, Target, Calendar, Award, TrendingUp, LogIn } from 'lucide-react';
+import { Trophy, Users, Target, Calendar, Award, TrendingUp, LogIn, Coins } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { getInitials } from '@/lib/utils';
 import type { LearningChallenge } from '@/lib/types';
+import { getEconomySettingsAction } from '@/app/super-admin/settings/actions';
+import { useEffect, useState } from 'react';
 
 interface ChallengeCardProps {
   challenge: LearningChallenge & {
@@ -34,6 +36,15 @@ export function ChallengeCard({ challenge, onJoin, showProgress }: ChallengeCard
   const [isJoined, setIsJoined] = useState(challenge.isJoined || false);
   const [progress, setProgress] = useState(challenge.userProgress || 0);
   const [participants, setParticipants] = useState(challenge.participants?.length || 0);
+  const [joinCost, setJoinCost] = useState<number | null>(null);
+  
+  useEffect(() => {
+    getEconomySettingsAction().then(settings => {
+      if (settings) {
+        setJoinCost(settings.costToJoinChallenge || 0);
+      }
+    });
+  }, []);
 
   const startDate = challenge.startDate ? new Date(challenge.startDate) : new Date();
   const endDate = challenge.endDate ? new Date(challenge.endDate) : null;
@@ -132,6 +143,18 @@ export function ChallengeCard({ challenge, onJoin, showProgress }: ChallengeCard
             <Award className="h-4 w-4" />
             <span>{challenge.rewards.coins} coins</span>
           </div>
+          {!isJoined && joinCost !== null && joinCost > 0 && (
+            <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+              <Coins className="h-4 w-4" />
+              <span>Entry: {joinCost} coins</span>
+            </div>
+          )}
+          {challenge.prizePool !== undefined && challenge.prizePool > 0 && (
+            <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
+              <Trophy className="h-4 w-4" />
+              <span>Prize Pool: {challenge.prizePool} coins</span>
+            </div>
+          )}
         </div>
 
         {showProgress && isJoined && (
@@ -215,7 +238,7 @@ export function ChallengeCard({ challenge, onJoin, showProgress }: ChallengeCard
             ) : (
               <>
                 <LogIn className="mr-2 h-4 w-4" />
-                Join Challenge
+                Join Challenge {joinCost !== null && joinCost > 0 && `(${joinCost} coins)`}
               </>
             )}
           </Button>

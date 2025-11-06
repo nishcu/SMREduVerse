@@ -17,6 +17,27 @@ const EconomySettingsSchema = z.object({
   // Spending
   costForAITask: z.coerce.number().min(0),
 
+  // Activity Participation Costs
+  costToJoinChallenge: z.coerce.number().min(0),
+  costToHostChallenge: z.coerce.number().min(0),
+  costToJoinContest: z.coerce.number().min(0),
+  costToHostContest: z.coerce.number().min(0),
+  costToJoinStudyRoom: z.coerce.number().min(0),
+  costToCreateStudyRoom: z.coerce.number().min(0),
+  costToJoinGame: z.coerce.number().min(0),
+  
+  // Winner Rewards
+  rewardForChallengeWin: z.coerce.number().min(0),
+  rewardForChallengeSecond: z.coerce.number().min(0),
+  rewardForChallengeThird: z.coerce.number().min(0),
+  rewardForContestWin: z.coerce.number().min(0),
+  rewardForContestSecond: z.coerce.number().min(0),
+  rewardForContestThird: z.coerce.number().min(0),
+  
+  // Host Earnings Configuration
+  hostEarningPercent: z.coerce.number().min(0).max(100),
+  participantFeePercent: z.coerce.number().min(0).max(100),
+
   // Conversion & Commission
   coinsPerRupee: z.coerce.number().min(1),
   platformFeePercent: z.coerce.number().min(0).max(100),
@@ -39,8 +60,27 @@ export async function getEconomySettingsAction(): Promise<EconomySettings | null
             signupBonus: 100,
             referralBonus: 200,
             costForAITask: 10,
+            // Activity Participation Costs
+            costToJoinChallenge: 50,
+            costToHostChallenge: 200,
+            costToJoinContest: 100,
+            costToHostContest: 500,
+            costToJoinStudyRoom: 10,
+            costToCreateStudyRoom: 50,
+            costToJoinGame: 20,
+            // Winner Rewards
+            rewardForChallengeWin: 100,
+            rewardForChallengeSecond: 50,
+            rewardForChallengeThird: 25,
+            rewardForContestWin: 500,
+            rewardForContestSecond: 250,
+            rewardForContestThird: 100,
+            // Host Earnings Configuration
+            hostEarningPercent: 15, // Host earns 15% of participant fees
+            participantFeePercent: 15, // 15% of entry fee goes to host, rest to prize pool
+            // Conversion & Commission
             coinsPerRupee: 100,
-            platformFeePercent: 15,
+            platformFeePercent: 10, // Platform takes 10% commission on all earnings
         };
         await docRef.set(defaultSettings);
         return defaultSettings;
@@ -62,6 +102,21 @@ export async function saveEconomySettingsAction(prevState: any, formData: FormDa
         signupBonus: formData.get('signupBonus'),
         referralBonus: formData.get('referralBonus'),
         costForAITask: formData.get('costForAITask'),
+        costToJoinChallenge: formData.get('costToJoinChallenge'),
+        costToHostChallenge: formData.get('costToHostChallenge'),
+        costToJoinContest: formData.get('costToJoinContest'),
+        costToHostContest: formData.get('costToHostContest'),
+        costToJoinStudyRoom: formData.get('costToJoinStudyRoom'),
+        costToCreateStudyRoom: formData.get('costToCreateStudyRoom'),
+        costToJoinGame: formData.get('costToJoinGame'),
+        rewardForChallengeWin: formData.get('rewardForChallengeWin'),
+        rewardForChallengeSecond: formData.get('rewardForChallengeSecond'),
+        rewardForChallengeThird: formData.get('rewardForChallengeThird'),
+        rewardForContestWin: formData.get('rewardForContestWin'),
+        rewardForContestSecond: formData.get('rewardForContestSecond'),
+        rewardForContestThird: formData.get('rewardForContestThird'),
+        hostEarningPercent: formData.get('hostEarningPercent'),
+        participantFeePercent: formData.get('participantFeePercent'),
         coinsPerRupee: formData.get('coinsPerRupee'),
         platformFeePercent: formData.get('platformFeePercent'),
     });

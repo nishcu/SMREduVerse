@@ -1,5 +1,6 @@
 
 'use client';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useEffect, useActionState } from 'react';
@@ -32,8 +33,23 @@ export function EconomySettingsClient() {
       signupBonus: 100,
       referralBonus: 200,
       costForAITask: 10,
+      costToJoinChallenge: 50,
+      costToHostChallenge: 200,
+      costToJoinContest: 100,
+      costToHostContest: 500,
+      costToJoinStudyRoom: 10,
+      costToCreateStudyRoom: 50,
+      costToJoinGame: 20,
+      rewardForChallengeWin: 100,
+      rewardForChallengeSecond: 50,
+      rewardForChallengeThird: 25,
+      rewardForContestWin: 500,
+      rewardForContestSecond: 250,
+      rewardForContestThird: 100,
+      hostEarningPercent: 15,
+      participantFeePercent: 15,
       coinsPerRupee: 100,
-      platformFeePercent: 15,
+      platformFeePercent: 10,
     },
   });
 
@@ -77,12 +93,45 @@ export function EconomySettingsClient() {
                 <FormField control={form.control} name="costForAITask" render={({ field }) => (<FormItem><FormLabel>AI Task Generation Cost</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Cost for Brain Lab task generation.</FormDescription><FormMessage /></FormItem>)} />
             </div>
         </div>
+
+        <div>
+            <h3 className="text-lg font-medium mb-4">Activity Participation Costs</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <FormField control={form.control} name="costToJoinChallenge" render={({ field }) => (<FormItem><FormLabel>Join Challenge Cost</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Cost for participants to join a challenge.</FormDescription><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="costToHostChallenge" render={({ field }) => (<FormItem><FormLabel>Host Challenge Cost</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Cost for users to create/host a challenge.</FormDescription><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="costToJoinContest" render={({ field }) => (<FormItem><FormLabel>Join Contest Cost</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Cost for participants to join a contest.</FormDescription><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="costToHostContest" render={({ field }) => (<FormItem><FormLabel>Host Contest Cost</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Cost for users to create/host a contest.</FormDescription><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="costToJoinStudyRoom" render={({ field }) => (<FormItem><FormLabel>Join Study Room Cost</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Cost for participants to join a study room.</FormDescription><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="costToCreateStudyRoom" render={({ field }) => (<FormItem><FormLabel>Create Study Room Cost</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Cost for users to create a study room.</FormDescription><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="costToJoinGame" render={({ field }) => (<FormItem><FormLabel>Join Game Cost</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Cost for participants to join multiplayer games.</FormDescription><FormMessage /></FormItem>)} />
+            </div>
+        </div>
+
+        <div>
+            <h3 className="text-lg font-medium mb-4">Winner Rewards</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <FormField control={form.control} name="rewardForChallengeWin" render={({ field }) => (<FormItem><FormLabel>Challenge 1st Place Reward</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Base reward for winning a challenge.</FormDescription><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="rewardForChallengeSecond" render={({ field }) => (<FormItem><FormLabel>Challenge 2nd Place Reward</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Base reward for 2nd place in challenge.</FormDescription><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="rewardForChallengeThird" render={({ field }) => (<FormItem><FormLabel>Challenge 3rd Place Reward</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Base reward for 3rd place in challenge.</FormDescription><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="rewardForContestWin" render={({ field }) => (<FormItem><FormLabel>Contest 1st Place Reward</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Base reward for winning a contest.</FormDescription><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="rewardForContestSecond" render={({ field }) => (<FormItem><FormLabel>Contest 2nd Place Reward</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Base reward for 2nd place in contest.</FormDescription><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="rewardForContestThird" render={({ field }) => (<FormItem><FormLabel>Contest 3rd Place Reward</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Base reward for 3rd place in contest.</FormDescription><FormMessage /></FormItem>)} />
+            </div>
+        </div>
+
+        <div>
+            <h3 className="text-lg font-medium mb-4">Host Earnings & Distribution</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <FormField control={form.control} name="hostEarningPercent" render={({ field }) => (<FormItem><FormLabel>Host Earning (%)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Percentage of participant fees that host earns.</FormDescription><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="participantFeePercent" render={({ field }) => (<FormItem><FormLabel>Host Fee Share (%)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Percentage of entry fee that goes to host (rest to prize pool).</FormDescription><FormMessage /></FormItem>)} />
+            </div>
+        </div>
         
         <div>
             <h3 className="text-lg font-medium mb-4">Platform & Conversion</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <FormField control={form.control} name="coinsPerRupee" render={({ field }) => (<FormItem><FormLabel>Coins per Rupee</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Conversion for payout value (e.g., 100 = ₹1).</FormDescription><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="platformFeePercent" render={({ field }) => (<FormItem><FormLabel>Platform Fee (%)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Commission on partner/tutor sales.</FormDescription><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="platformFeePercent" render={({ field }) => (<FormItem><FormLabel>Platform Fee (%)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormDescription>Platform commission on all earnings.</FormDescription><FormMessage /></FormItem>)} />
             </div>
         </div>
         
