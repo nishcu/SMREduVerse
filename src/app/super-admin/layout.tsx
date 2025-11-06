@@ -10,6 +10,8 @@ import {
     Handshake,
     LayoutDashboard,
     DollarSign,
+    Target,
+    TrendingUp,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -30,10 +32,14 @@ import { useAuth } from '@/hooks/use-auth';
 import { UserNav } from '@/components/user-nav';
 
 const navItems = [
+    { href: '/super-admin', icon: LayoutDashboard, label: 'Dashboard' },
     { href: '/super-admin/users', icon: Users, label: 'User Management' },
+    { href: '/super-admin/courses', icon: BookOpen, label: 'Courses Management' },
+    { href: '/super-admin/challenges', icon: Target, label: 'Challenges Management' },
     { href: '/super-admin/content', icon: BookOpen, label: 'Content Moderation' },
     { href: '/super-admin/contests', icon: Trophy, label: 'Contest Management' },
     { href: '/super-admin/partners', icon: Handshake, label: 'Partner Management' },
+    { href: '/super-admin/reports', icon: TrendingUp, label: 'Transaction Reports' },
     { href: '/super-admin/monetization', icon: DollarSign, label: 'Monetization' },
     { href: '/super-admin/ai', icon: Bot, label: 'AI Configuration' },
     { href: '/super-admin/security-rules', icon: Shield, label: 'Security Rules' },
