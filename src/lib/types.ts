@@ -14,6 +14,7 @@ export interface User {
   username: string;
   name: string;
   email: string;
+  mobileNumber?: string;
   bio?: string;
   avatarUrl: string;
   isSuperAdmin: boolean;

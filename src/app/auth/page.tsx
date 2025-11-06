@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EnhancedSignupForm } from '@/components/enhanced-signup-form';
 
 function LoginForm() {
   const { user, loginWithGoogle, loginWithEmail } = useAuth();
@@ -191,7 +192,7 @@ export default function AuthPage() {
                 <LoginForm />
               </TabsContent>
               <TabsContent value="signup" className="pt-4">
-                <SignupForm />
+                <EnhancedSignupForm />
               </TabsContent>
             </Tabs>
           )}
