@@ -14,8 +14,6 @@ import { Trophy, Users, Target, Calendar, Award, TrendingUp, LogIn, Coins } from
 import { formatDistanceToNow } from 'date-fns';
 import { getInitials } from '@/lib/utils';
 import type { LearningChallenge } from '@/lib/types';
-import { getEconomySettingsAction } from '@/app/super-admin/settings/actions';
-import { useEffect, useState } from 'react';
 
 interface ChallengeCardProps {
   challenge: LearningChallenge & {
@@ -39,11 +37,16 @@ export function ChallengeCard({ challenge, onJoin, showProgress }: ChallengeCard
   const [joinCost, setJoinCost] = useState<number | null>(null);
   
   useEffect(() => {
-    getEconomySettingsAction().then(settings => {
-      if (settings) {
-        setJoinCost(settings.costToJoinChallenge || 0);
-      }
-    });
+    fetch('/api/economy-settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data && !data.error) {
+          setJoinCost(data.costToJoinChallenge || 0);
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching economy settings:', err);
+      });
   }, []);
 
   const startDate = challenge.startDate ? new Date(challenge.startDate) : new Date();

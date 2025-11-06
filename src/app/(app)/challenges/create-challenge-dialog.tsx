@@ -15,7 +15,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Coins, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { getEconomySettingsAction } from '@/app/super-admin/settings/actions';
 
 const CreateChallengeSchema = z.object({
   title: z.string().min(1, 'Title is required.').max(100, 'Title must be 100 characters or less.'),
@@ -48,11 +47,16 @@ export function CreateChallengeDialog({ isOpen, onOpenChange }: CreateChallengeD
   
   useEffect(() => {
     if (isOpen) {
-      getEconomySettingsAction().then(settings => {
-        if (settings) {
-          setHostCost(settings.costToHostChallenge || 0);
-        }
-      });
+      fetch('/api/economy-settings')
+        .then(res => res.json())
+        .then(data => {
+          if (data && !data.error) {
+            setHostCost(data.costToHostChallenge || 0);
+          }
+        })
+        .catch(err => {
+          console.error('Error fetching economy settings:', err);
+        });
     }
   }, [isOpen]);
 
