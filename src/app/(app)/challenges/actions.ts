@@ -7,6 +7,7 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import type { LearningChallenge } from '@/lib/types';
 import { deductCoins, awardCoins } from '@/lib/coin-transactions';
 import { getEconomySettingsAction as getSettings } from '@/app/super-admin/settings/actions';
+import { logActivity } from '@/lib/activity-logger';
 
 const CreateChallengeSchema = z.object({
   idToken: z.string(),
@@ -243,6 +244,15 @@ export async function joinChallengeAction(challengeId: string, idToken: string) 
           error: balanceCheck.error || 'Insufficient coins to join challenge.',
         };
       }
+
+      // Log activity
+      await logActivity(
+        uid,
+        'challenge_join',
+        `Joined Challenge: ${challenge.title}`,
+        `Paid ${joinFee} coins to join challenge`,
+        { amount: joinFee, challengeId, challengeTitle: challenge.title }
+      );
     }
 
     // Calculate prize pool contribution and host earnings

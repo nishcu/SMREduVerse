@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import type { MarketplaceContent, ContentReview } from '@/lib/types';
+import { logActivity } from '@/lib/activity-logger';
 
 const CreateContentSchema = z.object({
   idToken: z.string(),
@@ -220,6 +221,15 @@ export async function purchaseContentAction(contentId: string, idToken: string) 
       description: `Sale: ${content.title}`,
       createdAt: FieldValue.serverTimestamp(),
     });
+
+    // Log activity
+    await logActivity(
+      uid,
+      'purchase',
+      `Purchased: ${content.title}`,
+      `Spent ${content.price} coins on marketplace content`,
+      { amount: content.price, contentId, contentTitle: content.title, contentType: content.type }
+    );
 
     revalidatePath('/marketplace');
     return {

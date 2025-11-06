@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin';
 import { GenerateCreativeTasksInputSchema, generateCreativeTasks } from '@/ai/flows/generate-creative-tasks';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { logActivity } from '@/lib/activity-logger';
 
 const generateTaskActionSchema = GenerateCreativeTasksInputSchema.extend({
     idToken: z.string(),
@@ -68,6 +69,15 @@ export async function generateTaskAction(prevState: any, data: FormData): Promis
             transactionType: 'spend',
             createdAt: FieldValue.serverTimestamp(),
         });
+
+        // Log activity (outside transaction)
+        logActivity(
+          uid,
+          'spending',
+          'AI Task Generation',
+          `Spent ${costForAITask} coins to generate AI task`,
+          { amount: costForAITask, taskType: taskInput.taskType, topic: taskInput.topic }
+        ).catch(err => console.error('Error logging activity:', err));
 
         return { task: aiResponse };
     });

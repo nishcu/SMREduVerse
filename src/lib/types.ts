@@ -29,7 +29,16 @@ export interface User {
     restrictSpending: boolean;
     restrictChat: boolean;
     restrictTalentHub: boolean;
+    restrictAITasks: boolean;
+    restrictContests: boolean;
+    restrictMarketplace: boolean;
+    enableActivityLogs: boolean;
   },
+  // Parent-Child Relationship
+  parentId?: string; // If this is a child account, reference to parent
+  isChildAccount?: boolean; // Flag to identify child accounts
+  children?: string[]; // If this is a parent account, list of child user IDs
+  parentalCode?: string; // Secret code for parental controls (hashed)
   wallet: {
       knowledgeCoins: number;
   },
@@ -121,6 +130,51 @@ export interface Transaction {
   description: string;
   points: number;
   transactionType: 'earn' | 'spend';
+  createdAt: Timestamp;
+}
+
+// Parental Controls
+export interface ParentalControlSettings {
+  restrictSpending: boolean;
+  restrictChat: boolean;
+  restrictTalentHub: boolean;
+  restrictAITasks: boolean;
+  restrictContests: boolean;
+  restrictMarketplace: boolean;
+  enableActivityLogs: boolean;
+  notificationInterval: number; // Minutes between notifications (default: 120 = 2 hours)
+  lastNotificationSent?: Timestamp;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface ActivityLog {
+  id: string;
+  userId: string;
+  activityType: 'spending' | 'chat' | 'purchase' | 'course_enrollment' | 'game_play' | 'challenge_join' | 'other';
+  activityTitle: string;
+  activityDetails?: string;
+  metadata?: {
+    amount?: number;
+    itemName?: string;
+    recipientId?: string;
+    [key: string]: any;
+  };
+  timestamp: Timestamp;
+}
+
+export interface ParentNotification {
+  id: string;
+  parentId: string;
+  childId: string;
+  childName: string;
+  notificationType: 'activity_summary' | 'spending_alert' | 'restriction_triggered' | 'custom';
+  title: string;
+  message: string;
+  activities?: ActivityLog[];
+  periodStart: Timestamp;
+  periodEnd: Timestamp;
+  read: boolean;
   createdAt: Timestamp;
 }
 
