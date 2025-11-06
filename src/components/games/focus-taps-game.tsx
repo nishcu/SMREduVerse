@@ -12,6 +12,14 @@ export const FocusTapsGame = ({ onComplete }: { onComplete: () => void }) => {
     const [timeLeft, setTimeLeft] = useState(30);
     const [gameStarted, setGameStarted] = useState(false);
 
+    // Reset when component remounts (new key)
+    useEffect(() => {
+        setTargets([]);
+        setScore(0);
+        setTimeLeft(30);
+        setGameStarted(false);
+    }, []);
+
     useEffect(() => {
         if (!gameStarted || timeLeft === 0) return;
 
