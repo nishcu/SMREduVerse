@@ -4,11 +4,17 @@
 declare module 'react' {
   export * from 'react/index';
   export function useState<T>(initialState: T | (() => T)): [T, (value: T | ((prev: T) => T)) => void];
-  export function useEffect(effect: () => void | (() => void), deps?: any[]): void;
-  export function useMemo<T>(factory: () => T, deps: any[]): T;
-  export function useCallback<T extends (...args: any[]) => any>(callback: T, deps: any[]): T;
-  export function useRef<T>(initialValue: T): { current: T };
+  export function useEffect(effect: () => void | (() => void), deps?: React.DependencyList): void;
+  export function useMemo<T>(factory: () => T, deps: React.DependencyList): T;
+  export function useCallback<T extends (...args: any[]) => any>(callback: T, deps: React.DependencyList): T;
+  export function useRef<T>(initialValue: T): React.MutableRefObject<T>;
   export function useTransition(): [boolean, (callback: () => void) => void];
+  export namespace React {
+    type DependencyList = ReadonlyArray<any>;
+    interface MutableRefObject<T> {
+      current: T;
+    }
+  }
 }
 
 declare module 'react-dom' {
