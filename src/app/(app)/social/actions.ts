@@ -40,12 +40,14 @@ export async function createPostAction(prevState: any, formData: FormData) {
     const decodedToken = await auth.verifyIdToken(idToken);
     uid = decodedToken.uid;
     
-    // Fetch the user's profile to get their name and avatar
-    const userProfileSnap = await db.collection('users').doc(uid).collection('profile').limit(1).get();
-    if (userProfileSnap.empty) {
+    // Fetch the user's profile to get their name and avatar - use correct path
+    const userProfileRef = db.doc(`users/${uid}/profile/${uid}`);
+    const userProfileSnap = await userProfileRef.get();
+    
+    if (!userProfileSnap.exists) {
         throw new Error('User profile not found.');
     }
-    const userProfile = userProfileSnap.docs[0].data();
+    const userProfile = userProfileSnap.data()!;
 
     const postPayload = {
       authorUid: uid,
@@ -199,6 +201,299 @@ export async function getCommentsAction(postId: string) {
       success: false,
       error: error.message || 'Failed to load comments.',
       comments: [],
+    };
+  }
+}
+
+// Like/Unlike Actions
+export async function toggleLikeAction(postId: string, idToken: string) {
+  const auth = getAdminAuth();
+  const db = getAdminDb();
+
+  try {
+    const decodedToken = await auth.verifyIdToken(idToken);
+    const uid = decodedToken.uid;
+
+    const likeRef = db.doc(`posts/${postId}/likes/${uid}`);
+    const likeSnap = await likeRef.get();
+    const postRef = db.doc(`posts/${postId}`);
+
+    if (likeSnap.exists) {
+      // Unlike: Remove like document and decrement count
+      await likeRef.delete();
+      await postRef.update({
+        likes: FieldValue.increment(-1),
+      });
+      return { success: true, liked: false };
+    } else {
+      // Like: Create like document and increment count
+      await likeRef.set({
+        userId: uid,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      await postRef.update({
+        likes: FieldValue.increment(1),
+      });
+      return { success: true, liked: true };
+    }
+  } catch (error: any) {
+    console.error(`Error toggling like for post ${postId}:`, error);
+    return {
+      success: false,
+      error: error.message || 'Failed to toggle like.',
+    };
+  }
+}
+
+export async function checkLikedAction(postId: string, idToken: string) {
+  const auth = getAdminAuth();
+  const db = getAdminDb();
+
+  try {
+    const decodedToken = await auth.verifyIdToken(idToken);
+    const uid = decodedToken.uid;
+
+    const likeRef = db.doc(`posts/${postId}/likes/${uid}`);
+    const likeSnap = await likeRef.get();
+
+    return { success: true, liked: likeSnap.exists };
+  } catch (error: any) {
+    return { success: false, liked: false };
+  }
+}
+
+export async function getLikedUsersAction(postId: string, limit: number = 5) {
+  const db = getAdminDb();
+
+  try {
+    const likesSnapshot = await db
+      .collection(`posts/${postId}/likes`)
+      .orderBy('createdAt', 'desc')
+      .limit(limit)
+      .get();
+
+    const likedUserIds = likesSnapshot.docs.map((doc) => doc.id);
+
+    // Fetch user profiles for liked users
+    const userProfiles = await Promise.all(
+      likedUserIds.map(async (userId) => {
+        const userProfileRef = db.doc(`users/${userId}/profile/${userId}`);
+        const userProfileSnap = await userProfileRef.get();
+        if (userProfileSnap.exists) {
+          const data = userProfileSnap.data()!;
+          return {
+            uid: userId,
+            name: data.name || 'Anonymous',
+            avatarUrl: data.avatarUrl || '',
+          };
+        }
+        return null;
+      })
+    );
+
+    return {
+      success: true,
+      users: userProfiles.filter(Boolean),
+    };
+  } catch (error: any) {
+    console.error(`Error fetching liked users for post ${postId}:`, error);
+    return {
+      success: false,
+      users: [],
+    };
+  }
+}
+
+// Follow/Unfollow Actions
+export async function toggleFollowAction(targetUserId: string, idToken: string) {
+  const auth = getAdminAuth();
+  const db = getAdminDb();
+
+  try {
+    const decodedToken = await auth.verifyIdToken(idToken);
+    const currentUserId = decodedToken.uid;
+
+    if (currentUserId === targetUserId) {
+      return {
+        success: false,
+        error: 'You cannot follow yourself.',
+      };
+    }
+
+    const followRef = db.doc(`users/${currentUserId}/following/${targetUserId}`);
+    const followerRef = db.doc(`users/${targetUserId}/followers/${currentUserId}`);
+    const followSnap = await followRef.get();
+
+    const currentUserProfileRef = db.doc(`users/${currentUserId}/profile/${currentUserId}`);
+    const targetUserProfileRef = db.doc(`users/${targetUserId}/profile/${targetUserId}`);
+
+    if (followSnap.exists) {
+      // Unfollow: Remove follow relationship
+      await followRef.delete();
+      await followerRef.delete();
+      
+      // Decrement counts
+      await currentUserProfileRef.update({
+        followingCount: FieldValue.increment(-1),
+      });
+      await targetUserProfileRef.update({
+        followersCount: FieldValue.increment(-1),
+      });
+
+      return { success: true, following: false };
+    } else {
+      // Follow: Create follow relationship
+      await followRef.set({
+        userId: targetUserId,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      await followerRef.set({
+        userId: currentUserId,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+
+      // Increment counts
+      await currentUserProfileRef.update({
+        followingCount: FieldValue.increment(1),
+      });
+      await targetUserProfileRef.update({
+        followersCount: FieldValue.increment(1),
+      });
+
+      return { success: true, following: true };
+    }
+  } catch (error: any) {
+    console.error(`Error toggling follow for user ${targetUserId}:`, error);
+    return {
+      success: false,
+      error: error.message || 'Failed to toggle follow.',
+    };
+  }
+}
+
+export async function checkFollowingAction(targetUserId: string, idToken: string) {
+  const auth = getAdminAuth();
+  const db = getAdminDb();
+
+  try {
+    const decodedToken = await auth.verifyIdToken(idToken);
+    const currentUserId = decodedToken.uid;
+
+    const followRef = db.doc(`users/${currentUserId}/following/${targetUserId}`);
+    const followSnap = await followRef.get();
+
+    return { success: true, following: followSnap.exists };
+  } catch (error: any) {
+    return { success: false, following: false };
+  }
+}
+
+// Get Following Feed
+export async function getFollowingFeedAction(idToken: string, limit: number = 20) {
+  const auth = getAdminAuth();
+  const db = getAdminDb();
+
+  try {
+    const decodedToken = await auth.verifyIdToken(idToken);
+    const currentUserId = decodedToken.uid;
+
+    // Get list of users being followed
+    const followingSnapshot = await db
+      .collection(`users/${currentUserId}/following`)
+      .get();
+
+    const followingUserIds = followingSnapshot.docs.map((doc) => doc.id);
+
+    if (followingUserIds.length === 0) {
+      return { success: true, posts: [] };
+    }
+
+    // Get posts from followed users
+    const postsSnapshot = await db
+      .collection('posts')
+      .where('authorUid', 'in', followingUserIds.slice(0, 10)) // Firestore 'in' limit is 10
+      .orderBy('createdAt', 'desc')
+      .limit(limit)
+      .get();
+
+    // If more than 10 users, query in batches
+    let posts = postsSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    if (followingUserIds.length > 10) {
+      const remainingUserIds = followingUserIds.slice(10);
+      for (let i = 0; i < remainingUserIds.length; i += 10) {
+        const batch = remainingUserIds.slice(i, i + 10);
+        const batchSnapshot = await db
+          .collection('posts')
+          .where('authorUid', 'in', batch)
+          .orderBy('createdAt', 'desc')
+          .limit(limit)
+          .get();
+        
+        const batchPosts = batchSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        posts = [...posts, ...batchPosts];
+      }
+      
+      // Sort by createdAt and limit
+      posts = posts
+        .sort((a, b) => {
+          const aTime = a.createdAt?.toMillis() || 0;
+          const bTime = b.createdAt?.toMillis() || 0;
+          return bTime - aTime;
+        })
+        .slice(0, limit);
+    }
+
+    return { success: true, posts };
+  } catch (error: any) {
+    console.error(`Error fetching following feed:`, error);
+    return {
+      success: false,
+      error: error.message || 'Failed to load following feed.',
+      posts: [],
+    };
+  }
+}
+
+// Get Trending Feed (posts with most engagement)
+export async function getTrendingFeedAction(limit: number = 20) {
+  const db = getAdminDb();
+
+  try {
+    // Get posts ordered by engagement score (likes + comments * 2)
+    // For now, we'll order by likes + comments, but ideally we'd calculate engagement score
+    const postsSnapshot = await db
+      .collection('posts')
+      .orderBy('likes', 'desc')
+      .limit(limit * 2) // Get more to filter
+      .get();
+
+    const posts = postsSnapshot.docs
+      .map((doc) => {
+        const data = doc.data();
+        const engagement = (data.likes || 0) + (data.comments || 0) * 2;
+        return {
+          id: doc.id,
+          ...data,
+          engagement,
+        };
+      })
+      .sort((a, b) => b.engagement - a.engagement)
+      .slice(0, limit);
+
+    return { success: true, posts };
+  } catch (error: any) {
+    console.error(`Error fetching trending feed:`, error);
+    return {
+      success: false,
+      error: error.message || 'Failed to load trending feed.',
+      posts: [],
     };
   }
 }

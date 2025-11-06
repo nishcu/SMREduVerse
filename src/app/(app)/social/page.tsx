@@ -35,14 +35,13 @@ export default function SocialPage() {
             <TabsTrigger value="trending">Trending</TabsTrigger>
           </TabsList>
           <TabsContent value="for-you">
-            {/* For now, all tabs show the same feed. This can be customized later. */}
-            <PostsFeed />
+            <PostsFeed feedType="for-you" />
           </TabsContent>
           <TabsContent value="following">
-            <PostsFeed />
+            <PostsFeed feedType="following" />
           </TabsContent>
           <TabsContent value="trending">
-            <PostsFeed />
+            <PostsFeed feedType="trending" />
           </TabsContent>
         </Tabs>
       </div>
