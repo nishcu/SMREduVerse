@@ -23,6 +23,22 @@ interface ChatWindowProps {
   chat: Chat;
 }
 
+function MessageTime({ timestamp }: { timestamp?: any }) {
+  const [time, setTime] = useState<string>('Sending...');
+  
+  useEffect(() => {
+    if (timestamp) {
+      try {
+        setTime(format(timestamp.toDate(), 'HH:mm'));
+      } catch (error) {
+        setTime('Sending...');
+      }
+    }
+  }, [timestamp]);
+  
+  return <p className="text-xs opacity-70" suppressHydrationWarning>{time}</p>;
+}
+
 function MessageBubble({
   message,
   isOwn,
