@@ -31,11 +31,11 @@ export async function getPersonalizedFeedAction(idToken: string, limit: number =
 
     // Get user's enrolled courses
     const enrollmentsSnapshot = await db.collection(`users/${uid}/enrollments`).get();
-    const enrolledCourseIds = enrollmentsSnapshot.docs.map(doc => doc.id);
+    const enrolledCourseIds = enrollmentsSnapshot.docs.map((doc: any) => doc.id);
 
     // Get user's following list
     const followingSnapshot = await db.collection(`users/${uid}/following`).get();
-    const followingUserIds = followingSnapshot.docs.map(doc => doc.id);
+    const followingUserIds = followingSnapshot.docs.map((doc: any) => doc.id);
 
     const recommendations: LearningRecommendation[] = [];
 
@@ -46,14 +46,14 @@ export async function getPersonalizedFeedAction(idToken: string, limit: number =
       .limit(10)
       .get();
 
-    coursesSnapshot.docs.forEach((doc) => {
+    coursesSnapshot.docs.forEach((doc: any) => {
       const course = doc.data();
       if (!enrolledCourseIds.includes(doc.id)) {
         let score = 50; // Base score
 
         // Boost score if matches user interests
         if (userInterests.length > 0 && course.subject) {
-          const matchesInterest = userInterests.some(interest => 
+          const matchesInterest = userInterests.some((interest: string) => 
             course.subject.toLowerCase().includes(interest.toLowerCase()) ||
             interest.toLowerCase().includes(course.subject.toLowerCase())
           );
@@ -90,7 +90,7 @@ export async function getPersonalizedFeedAction(idToken: string, limit: number =
         .limit(20)
         .get();
 
-      usersSnapshot.docs.forEach((doc) => {
+      usersSnapshot.docs.forEach((doc: any) => {
         const user = doc.data();
         const userId = doc.ref.path.split('/')[1]; // Extract user ID from path
 
@@ -115,7 +115,7 @@ export async function getPersonalizedFeedAction(idToken: string, limit: number =
 
     // 3. Content Recommendations (from posts)
     // Get posts from followed users or trending posts
-    let postsSnapshot;
+    let postsSnapshot: any;
     if (followingUserIds.length > 0) {
       postsSnapshot = await db.collection('posts')
         .where('authorUid', 'in', followingUserIds.slice(0, 10))
@@ -128,7 +128,8 @@ export async function getPersonalizedFeedAction(idToken: string, limit: number =
         .get();
     }
 
-    postsSnapshot.docs.forEach((doc) => {
+    if (postsSnapshot && postsSnapshot.docs) {
+      postsSnapshot.docs.forEach((doc: any) => {
       const post = doc.data();
       let score = 30;
 
@@ -137,7 +138,7 @@ export async function getPersonalizedFeedAction(idToken: string, limit: number =
       score += Math.min(30, engagement / 10);
 
       // Boost score if post matches user interests
-      if (post.subject && userInterests.some(interest => 
+      if (post.subject && userInterests.some((interest: string) => 
         post.subject.toLowerCase().includes(interest.toLowerCase())
       )) {
         score += 20;
@@ -152,6 +153,7 @@ export async function getPersonalizedFeedAction(idToken: string, limit: number =
           friendsLearning: followingUserIds.includes(post.authorUid) ? 1 : 0,
           trending: engagement > 50,
         },
+      });
       });
     }
 
