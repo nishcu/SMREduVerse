@@ -2,7 +2,7 @@
 'use client';
 import { useParams } from 'next/navigation';
 import { useDoc } from '@/firebase';
-import { doc, DocumentReference, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, DocumentReference, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { User } from '@/lib/types';
 import { useMemo, useEffect, useState } from 'react';
