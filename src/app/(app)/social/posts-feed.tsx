@@ -192,13 +192,11 @@ function PostCard({ post }: { post: Post }) {
         isOpen={isCommentDialogOpen}
         onOpenChange={(open) => {
           setIsCommentDialogOpen(open);
-          if (!open) {
-            // Refresh comment count when dialog closes
-            setCommentCount(post.comments);
-          }
         }}
         postId={post.id}
         postAuthorId={post.author.uid}
+        initialCommentCount={commentCount}
+        onCommentAdded={() => setCommentCount(prev => prev + 1)}
       />
     </Card>
   );

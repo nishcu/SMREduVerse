@@ -130,18 +130,31 @@ export function EditProfileDialog({ isOpen, onOpenChange, user }: EditProfileDia
         </DialogHeader>
         <Form {...form}>
            <form
-            action={async (formData: FormData) => {
+            onSubmit={async (e) => {
+                e.preventDefault();
                 if (!firebaseUser) return;
+                
                 setHasSubmitted(true);
+                const formData = new FormData(e.currentTarget);
                 const idToken = await firebaseUser.getIdToken();
                 formData.set('idToken', idToken);
+                formData.set('name', form.getValues('name'));
+                formData.set('username', form.getValues('username'));
+                formData.set('bio', form.getValues('bio') || '');
+                formData.set('avatarUrl', form.getValues('avatarUrl') || '');
+                formData.set('grade', form.getValues('grade') || '');
+                formData.set('school', form.getValues('school') || '');
+                formData.set('syllabus', form.getValues('syllabus') || '');
+                formData.set('medium', form.getValues('medium') || '');
+                
                 formData.delete('interests');
                 form.getValues('interests')?.forEach(interest => formData.append('interests[]', interest));
                 formData.delete('sports');
                 form.getValues('sports')?.forEach(sport => formData.append('sports[]', sport));
                 formData.delete('educationHistory');
                 form.getValues('educationHistory')?.forEach(edu => formData.append('educationHistory', JSON.stringify(edu)));
-                formAction(formData);
+                
+                await formAction(formData);
             }}
             className="space-y-6 max-h-[70vh] overflow-y-auto pr-4"
           >

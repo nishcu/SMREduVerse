@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { createCommentAction, getCommentsAction } from '@/app/(app)/social/actions';
@@ -29,15 +30,38 @@ interface CommentDialogProps {
   onOpenChange: (open: boolean) => void;
   postId: string;
   postAuthorId: string;
+  initialCommentCount?: number;
+  onCommentAdded?: () => void;
 }
 
-export function CommentDialog({ isOpen, onOpenChange, postId, postAuthorId }: CommentDialogProps) {
+export function CommentDialog({ isOpen, onOpenChange, postId, postAuthorId, initialCommentCount, onCommentAdded }: CommentDialogProps) {
   const { user, firebaseUser } = useAuth();
   const { toast } = useToast();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [commentText, setCommentText] = useState('');
+
+  const loadComments = async () => {
+    if (!postId) return;
+    setLoading(true);
+    try {
+      const result = await getCommentsAction(postId);
+      if (result.success && result.comments) {
+        // Sort comments by creation time (newest first)
+        const sortedComments = result.comments.sort((a: Comment, b: Comment) => {
+          const aTime = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+          const bTime = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+          return bTime - aTime; // Newest first
+        });
+        setComments(sortedComments);
+      }
+    } catch (error) {
+      console.error('Error loading comments:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen && postId) {
@@ -47,20 +71,17 @@ export function CommentDialog({ isOpen, onOpenChange, postId, postAuthorId }: Co
       setCommentText('');
     }
   }, [isOpen, postId]);
-
-  const loadComments = async () => {
-    setLoading(true);
-    try {
-      const result = await getCommentsAction(postId);
-      if (result.success && result.comments) {
-        setComments(result.comments);
-      }
-    } catch (error) {
-      console.error('Error loading comments:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  
+  // Auto-refresh comments periodically when dialog is open
+  useEffect(() => {
+    if (!isOpen || !postId) return;
+    
+    const interval = setInterval(() => {
+      loadComments();
+    }, 5000); // Refresh every 5 seconds
+    
+    return () => clearInterval(interval);
+  }, [isOpen, postId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +98,7 @@ export function CommentDialog({ isOpen, onOpenChange, postId, postAuthorId }: Co
         setCommentText('');
         toast({ title: 'Success', description: 'Comment added!' });
         await loadComments(); // Reload comments
+        onCommentAdded?.(); // Notify parent to update comment count
       } else {
         toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to add comment' });
       }
@@ -91,7 +113,7 @@ export function CommentDialog({ isOpen, onOpenChange, postId, postAuthorId }: Co
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Comments</DialogTitle>
+          <DialogTitle>Comments {initialCommentCount !== undefined && `(${initialCommentCount})`}</DialogTitle>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto space-y-4 min-h-0">
           {loading ? (
@@ -104,23 +126,29 @@ export function CommentDialog({ isOpen, onOpenChange, postId, postAuthorId }: Co
               <p>No comments yet. Be the first to comment!</p>
             </div>
           ) : (
-            comments.map((comment) => (
-              <div key={comment.id} className="flex gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={comment.author.avatarUrl} />
-                  <AvatarFallback>{getInitials(comment.author.name)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm">{comment.author.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {comment.createdAt?.toDate ? formatDistanceToNow(comment.createdAt.toDate(), { addSuffix: true }) : 'just now'}
-                    </span>
+            <div className="space-y-4">
+              {comments.map((comment) => (
+                <div key={comment.id} className="flex gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                  <Link href={`/profile/${comment.author.uid}`}>
+                    <Avatar className="h-10 w-10 cursor-pointer">
+                      <AvatarImage src={comment.author.avatarUrl} />
+                      <AvatarFallback>{getInitials(comment.author.name)}</AvatarFallback>
+                    </Avatar>
+                  </Link>
+                  <div className="flex-1 space-y-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Link href={`/profile/${comment.author.uid}`} className="font-semibold text-sm hover:underline">
+                        {comment.author.name}
+                      </Link>
+                      <span className="text-xs text-muted-foreground">
+                        {comment.createdAt?.toDate ? formatDistanceToNow(comment.createdAt.toDate(), { addSuffix: true }) : 'just now'}
+                      </span>
+                    </div>
+                    <p className="text-sm whitespace-pre-wrap break-words">{comment.content}</p>
                   </div>
-                  <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
         {user && (
