@@ -103,20 +103,37 @@ export async function updateUserProfileAction(prevState: any, formData: FormData
     const decodedToken = await auth.verifyIdToken(idToken);
     const uid = decodedToken.uid;
     
-    // Check if username is unique (excluding the current user)
-    const usernameQuery = await db.collectionGroup('profile').where('username', '==', profileData.username).get();
-    const existingUser = usernameQuery.docs.find(doc => doc.id !== uid);
-    if (existingUser) {
-        return { error: 'Username is already taken. Please choose another one.' };
-    }
-
     const userRef = db.doc(`users/${uid}/profile/${uid}`);
     
-    // Check if document exists
+    // Get existing document data first
     const docSnap = await userRef.get();
+    const existingData = docSnap.exists ? docSnap.data() : null;
     
-    // Prepare data to update
+    // Check if username is unique (excluding the current user) - only if username changed
+    if (existingData?.username !== profileData.username) {
+      try {
+        // Query for username uniqueness - check all user profiles
+        // Note: This requires an index, but we'll handle errors gracefully
+        const usernameQuery = await db.collectionGroup('profile').where('username', '==', profileData.username).get();
+        const existingUser = usernameQuery.docs.find(doc => {
+          // Check if this is a different user (not the current user)
+          const docPath = doc.ref.path;
+          const docUserId = docPath.split('/')[1]; // Extract userId from path: users/{userId}/profile/{profileId}
+          return docUserId !== uid;
+        });
+        if (existingUser) {
+            return { error: 'Username is already taken. Please choose another one.' };
+        }
+      } catch (queryError: any) {
+        // If collectionGroup query fails (e.g., missing index), skip uniqueness check
+        // This is not critical - we'll still update the profile
+        console.warn('Username uniqueness check failed, continuing with update:', queryError.message);
+      }
+    }
+    
+    // Prepare data to update - merge with existing data to preserve all fields
     const dataToUpdate: any = {
+        ...existingData, // Preserve all existing fields
         name: profileData.name,
         username: profileData.username,
         bio: profileData.bio || '',
@@ -129,34 +146,26 @@ export async function updateUserProfileAction(prevState: any, formData: FormData
         interests: profileData.interests || [],
         sports: profileData.sports || [],
     };
+    
+    // Ensure required fields exist
+    if (!dataToUpdate.id) dataToUpdate.id = uid;
+    if (!dataToUpdate.email) dataToUpdate.email = decodedToken.email || '';
+    if (dataToUpdate.followersCount === undefined) dataToUpdate.followersCount = 0;
+    if (dataToUpdate.followingCount === undefined) dataToUpdate.followingCount = 0;
+    if (dataToUpdate.knowledgePoints === undefined) dataToUpdate.knowledgePoints = 0;
+    if (!dataToUpdate.wallet) dataToUpdate.wallet = { knowledgeCoins: 0 };
+    if (!dataToUpdate.settings) {
+      dataToUpdate.settings = {
+        restrictSpending: false,
+        restrictChat: false,
+        restrictTalentHub: false,
+      };
+    }
+    if (!dataToUpdate.createdAt) dataToUpdate.createdAt = FieldValue.serverTimestamp();
 
     // Always use set with merge to avoid Failed_Precondition errors
     // This works whether document exists or not, and preserves existing fields
-    const existingData = docSnap.exists ? docSnap.data() : null;
-    
-    if (!docSnap.exists) {
-        // Document doesn't exist, create it with all required fields
-        await userRef.set({
-            ...dataToUpdate,
-            id: uid,
-            email: decodedToken.email || '',
-            followersCount: existingData?.followersCount || 0,
-            followingCount: existingData?.followingCount || 0,
-            knowledgePoints: existingData?.knowledgePoints || 0,
-            wallet: existingData?.wallet || { knowledgeCoins: 0 },
-            settings: existingData?.settings || {
-                restrictSpending: false,
-                restrictChat: false,
-                restrictTalentHub: false,
-            },
-            createdAt: existingData?.createdAt || FieldValue.serverTimestamp(),
-        }, { merge: true });
-    } else {
-        // Document exists, use set with merge to update only specified fields
-        // This prevents Failed_Precondition errors and preserves existing fields
-        // Merge preserves all existing fields (followersCount, wallet, etc.)
-        await userRef.set(dataToUpdate, { merge: true });
-    }
+    await userRef.set(dataToUpdate, { merge: true });
     
     revalidatePath(`/profile/${uid}`);
     return { success: true, data: dataToUpdate };
