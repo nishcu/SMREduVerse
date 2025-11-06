@@ -154,20 +154,24 @@ export default function ChatPage() {
               <AvatarFallback>{getInitials(otherParticipant?.name || '?')}</AvatarFallback>
             </Avatar>
           )}
-          {chat.type === 'private' && isOnline && !presenceError && (
+          {mounted && chat.type === 'private' && isOnline && !presenceError && (
             <div className="absolute bottom-0 right-0">
               <Circle className="h-3 w-3 fill-green-500 text-green-500 border-2 border-background rounded-full" />
             </div>
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="font-semibold text-lg truncate">{chatName}</h1>
-          <p className="text-sm text-muted-foreground truncate" suppressHydrationWarning>{chatDescription}</p>
+          <h1 className="font-semibold text-lg truncate" suppressHydrationWarning>{chatName}</h1>
+          <p className="text-sm text-muted-foreground truncate" suppressHydrationWarning>
+            {mounted ? chatDescription : 'Loading...'}
+          </p>
         </div>
       </div>
-      <div className="flex-grow">
-        <EnhancedChatWindow chatId={chat.id} chat={chat} />
-      </div>
+      {mounted && (
+        <div className="flex-grow">
+          <EnhancedChatWindow chatId={chat.id} chat={chat} />
+        </div>
+      )}
     </Card>
   );
 }
