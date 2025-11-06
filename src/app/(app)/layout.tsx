@@ -127,7 +127,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
   
   // Replace 'me' with actual user id
-  navItems['Core'][1].href = `/profile/${user.id}`;
+  navItems['Home & Profile'][1].href = `/profile/${user.id}`;
 
   return (
     <SidebarProvider>
