@@ -31,6 +31,7 @@ import { getInitials } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
+import { CommentDialog } from '@/components/comment-dialog';
 
 function PostSkeleton() {
   return (
@@ -61,6 +62,8 @@ function PostCard({ post }: { post: Post }) {
   const { toast } = useToast();
   const [likes, setLikes] = useState(post.likes);
   const [isLiked, setIsLiked] = useState(false);
+  const [isCommentDialogOpen, setIsCommentDialogOpen] = useState(false);
+  const [commentCount, setCommentCount] = useState(post.comments);
 
   const createdAt = post.createdAt?.toDate();
   const timeAgo = createdAt ? formatDistanceToNow(createdAt, { addSuffix: true }) : 'just now';
@@ -176,9 +179,9 @@ function PostCard({ post }: { post: Post }) {
           <Heart className={`h-5 w-5 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
           <span>{likes}</span>
         </Button>
-        <Button variant="ghost" size="sm" className="flex items-center gap-2 text-muted-foreground" onClick={() => toast({ title: 'Coming Soon!', description: 'Commenting functionality is under development.'})}>
+        <Button variant="ghost" size="sm" className="flex items-center gap-2 text-muted-foreground" onClick={() => setIsCommentDialogOpen(true)}>
           <MessageCircle className="h-5 w-5" />
-          <span>{post.comments}</span>
+          <span>{commentCount}</span>
         </Button>
         <Button variant="ghost" size="sm" className="flex items-center gap-2 text-muted-foreground" onClick={handleShare}>
           <Share2 className="h-5 w-5" />

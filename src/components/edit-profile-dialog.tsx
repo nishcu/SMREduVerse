@@ -53,7 +53,7 @@ interface EditProfileDialogProps {
 }
 
 export function EditProfileDialog({ isOpen, onOpenChange, user }: EditProfileDialogProps) {
-  const [state, formAction, isPending] = useActionState(updateUserProfileAction, {success: false});
+  const [state, formAction, isPending] = useActionState(updateUserProfileAction, {success: false, error: null});
   const { firebaseUser } = useAuth();
   const { toast } = useToast();
   const [isCameraOpen, setCameraOpen] = useState(false);
@@ -74,15 +74,35 @@ export function EditProfileDialog({ isOpen, onOpenChange, user }: EditProfileDia
     }
   });
 
+  // Reset form when dialog opens or user changes
+  useEffect(() => {
+    if (isOpen) {
+      form.reset({
+        name: user.name || '',
+        username: user.username || '',
+        bio: user.bio || '',
+        avatarUrl: user.avatarUrl || '',
+        grade: user.grade || '',
+        school: (user as any).school || '',
+        educationHistory: user.educationHistory?.map(item => ({...item, id: item.id || uuidv4() })) || [],
+        syllabus: user.syllabus || '',
+        medium: user.medium || '',
+        interests: user.interests || [],
+        sports: user.sports || [],
+      });
+    }
+  }, [isOpen, user, form]);
+
   const { fields: educationFields, append: appendEducation, remove: removeEducation } = useFieldArray({ control: form.control, name: 'educationHistory' });
   const { fields: interestFields, append: appendInterest, remove: removeInterest } = useFieldArray({ control: form.control, name: 'interests' as any });
   const { fields: sportFields, append: appendSport, remove: removeSport } = useFieldArray({ control: form.control, name: 'sports' as any });
   
   useEffect(() => {
-    if (state?.success) {
+    // Only handle success/error if we have a meaningful state change (not initial render)
+    if (state?.success === true) {
       toast({ title: 'Success', description: 'Your profile has been updated.' });
       onOpenChange(false);
-    } else if (state?.error) {
+    } else if (state?.error && state.error !== null) {
       toast({ variant: 'destructive', title: 'Error', description: state.error });
     }
   }, [state, onOpenChange, toast]);
