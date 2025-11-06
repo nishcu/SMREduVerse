@@ -342,21 +342,25 @@ export async function getMarketplaceContentAction(subject?: string, type?: strin
   const db = getAdminDb();
 
   try {
-    let query = db.collection('marketplace-content')
-      .where('status', '==', 'published')
-      .orderBy('createdAt', 'desc');
+    // Note: Using where().orderBy() with multiple where clauses requires an index
+    // So we fetch without orderBy and sort in memory
+    let query: any = db.collection('marketplace-content')
+      .where('status', '==', 'published');
 
+    // Apply filters if provided
     if (subject) {
-      query = query.where('subject', '==', subject) as any;
+      query = query.where('subject', '==', subject);
     }
 
     if (type) {
-      query = query.where('type', '==', type) as any;
+      query = query.where('type', '==', type);
     }
 
-    const snapshot = await query.limit(limit).get();
+    // Fetch all matching documents (we'll sort and limit in memory)
+    const snapshot = await query.get();
 
-    const content = snapshot.docs.map((doc) => {
+    // Map and filter results
+    let content = snapshot.docs.map((doc: any) => {
       const data = doc.data();
       return {
         id: doc.id,
@@ -365,6 +369,29 @@ export async function getMarketplaceContentAction(subject?: string, type?: strin
         updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
       };
     });
+
+    // Apply additional filters in memory if needed (in case Firestore query didn't handle all cases)
+    if (subject) {
+      content = content.filter((item: any) => item.subject === subject);
+    }
+
+    if (type) {
+      content = content.filter((item: any) => item.type === type);
+    }
+
+    // Sort by createdAt in memory (descending - newest first)
+    content = content.sort((a: any, b: any) => {
+      const aTime = typeof a.createdAt === 'string' 
+        ? new Date(a.createdAt).getTime() 
+        : a.createdAt?.toMillis?.() || 0;
+      const bTime = typeof b.createdAt === 'string'
+        ? new Date(b.createdAt).getTime()
+        : b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
+
+    // Limit results
+    content = content.slice(0, limit);
 
     return {
       success: true,
