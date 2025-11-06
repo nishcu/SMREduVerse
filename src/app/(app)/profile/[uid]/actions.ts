@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import type { EducationHistory } from '@/lib/types';
 
 const EducationHistorySchema = z.object({
@@ -88,13 +89,37 @@ export async function updateUserProfileAction(prevState: any, formData: FormData
 
     const userRef = db.doc(`users/${uid}/profile/${uid}`);
     
+    // Check if document exists
+    const docSnap = await userRef.get();
+    
     // Ensure educationHistory is an array, even if it's empty
     const dataToUpdate = {
         ...profileData,
         educationHistory: profileData.educationHistory || []
     };
 
-    await userRef.update(dataToUpdate);
+    // Use set with merge if document doesn't exist, otherwise use update
+    if (!docSnap.exists) {
+        // Document doesn't exist, create it with all required fields
+        await userRef.set({
+            ...dataToUpdate,
+            id: uid,
+            email: decodedToken.email || '',
+            followersCount: 0,
+            followingCount: 0,
+            knowledgePoints: 0,
+            wallet: { knowledgeCoins: 0 },
+            settings: {
+                restrictSpending: false,
+                restrictChat: false,
+                restrictTalentHub: false,
+            },
+            createdAt: FieldValue.serverTimestamp(),
+        }, { merge: true });
+    } else {
+        // Document exists, update it
+        await userRef.update(dataToUpdate);
+    }
     
     revalidatePath(`/profile/${uid}`);
     return { success: true, data: profileData };
