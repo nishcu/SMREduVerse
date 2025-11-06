@@ -5,6 +5,12 @@ import { useDoc } from '@/firebase';
 import { db } from '@/lib/firebase';
 import type { Chat } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+
+type ParticipantDetail = {
+  uid: string;
+  name: string;
+  avatarUrl: string;
+};
 import { EnhancedChatWindow } from '@/components/chat/enhanced-chat-window';
 import { useAuth } from '@/hooks/use-auth';
 import { notFound, useParams } from 'next/navigation';
@@ -66,12 +72,12 @@ export default function ChatPage() {
     notFound();
   }
 
-  const otherParticipant = useMemo(() => {
+  const otherParticipant = useMemo((): ParticipantDetail | null => {
     if (chat.type === 'group') return null;
-    return chat.participantDetails
-      ? Object.values(chat.participantDetails).find((p) => p.uid !== user.id)
-      : null;
-  }, [chat, user]);
+    if (!chat.participantDetails) return null;
+    const participants = Object.values(chat.participantDetails) as ParticipantDetail[];
+    return participants.find((p) => p.uid !== user.id) || null;
+  }, [chat, user?.id]);
 
   const chatName = useMemo(() => {
     if (chat.type === 'group') {
