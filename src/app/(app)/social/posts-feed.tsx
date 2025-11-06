@@ -13,6 +13,7 @@ import {
   Share2,
   ShieldAlert,
   UserPlus,
+  MessageSquare,
 } from 'lucide-react';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
@@ -33,6 +34,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { CommentDialog } from '@/components/comment-dialog';
 import { toggleLikeAction, checkLikedAction, getLikedUsersAction, toggleFollowAction, checkFollowingAction } from './actions';
+import { getOrCreateChatAction } from '@/app/(app)/chats/actions';
+import { useRouter } from 'next/navigation';
 
 function PostSkeleton() {
   return (
@@ -61,6 +64,7 @@ function PostSkeleton() {
 function PostCard({ post }: { post: Post }) {
   const { user, firebaseUser } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
   const [likes, setLikes] = useState(post.likes);
   const [isLiked, setIsLiked] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -69,6 +73,7 @@ function PostCard({ post }: { post: Post }) {
   const [likedUsers, setLikedUsers] = useState<Array<{ uid: string; name: string; avatarUrl: string }>>([]);
   const [isLiking, setIsLiking] = useState(false);
   const [isFollowingAction, setIsFollowingAction] = useState(false);
+  const [isStartingChat, setIsStartingChat] = useState(false);
 
   const createdAt = post.createdAt?.toDate();
   const timeAgo = createdAt ? formatDistanceToNow(createdAt, { addSuffix: true }) : 'just now';
@@ -213,6 +218,36 @@ function PostCard({ post }: { post: Post }) {
     }
   };
 
+  const handleStartChat = async () => {
+    if (!user || !firebaseUser || isStartingChat || isOwnPost) return;
+    
+    setIsStartingChat(true);
+    try {
+      const result = await getOrCreateChatAction(user.id, post.author.uid);
+      if (result.success && result.chatId) {
+        router.push(`/chats/${result.chatId}`);
+        toast({
+          title: 'Chat Started',
+          description: `You can now chat with ${post.author.name}.`,
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: result.error || 'Could not start chat.',
+        });
+      }
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to start chat.',
+      });
+    } finally {
+      setIsStartingChat(false);
+    }
+  };
+
   const handleReport = () => {
     toast({
       variant: 'destructive',
@@ -328,6 +363,18 @@ function PostCard({ post }: { post: Post }) {
             <MessageCircle className="h-5 w-5" />
             <span>{commentCount}</span>
           </Button>
+          {!isOwnPost && firebaseUser && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="flex items-center gap-2 text-muted-foreground" 
+              onClick={handleStartChat}
+              disabled={isStartingChat}
+            >
+              <MessageSquare className="h-5 w-5" />
+              <span>{isStartingChat ? 'Starting...' : 'Message'}</span>
+            </Button>
+          )}
           <Button 
             variant="ghost" 
             size="sm" 

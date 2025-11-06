@@ -63,6 +63,7 @@ const navItems = {
   ],
   'Social': [
     { href: '/social', icon: Users, label: 'Social Feed' },
+    { href: '/discover', icon: Sparkles, label: 'Discover Users' },
     { href: '/chats', icon: MessageSquare, label: 'Chats' },
     { href: '/challenges', icon: Target, label: 'Challenges' },
     { href: '/contests', icon: Trophy, label: 'Contests'},
