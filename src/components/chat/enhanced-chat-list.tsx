@@ -132,13 +132,13 @@ function ChatListItem({
     lastMessage: Chat['lastMessage'];
     user: any;
 }) {
-    // Get online status for private chats
+    // Get online status for private chats (optional - gracefully handle permission errors)
     const presenceQuery = useMemo(
         () => otherParticipantId ? doc(db, 'presence', otherParticipantId) : null,
         [otherParticipantId]
     );
-    const { data: presence } = useDoc<any>(presenceQuery);
-    const isOnline = presence?.status === 'online';
+    const { data: presence, error: presenceError } = useDoc<any>(presenceQuery);
+    const isOnline = presence?.status === 'online' && !presenceError;
 
     return (
         <Link href={`/chats/${chat.id}`} className={cn(
@@ -151,7 +151,7 @@ function ChatListItem({
                         <AvatarImage src={avatarUrl} alt={chatName} />
                         <AvatarFallback>{getInitials(chatName)}</AvatarFallback>
                     </Avatar>
-                    {isOnline && (
+                    {isOnline && !presenceError && (
                         <div className="absolute bottom-0 right-0">
                             <Circle className="h-3 w-3 fill-green-500 text-green-500 border-2 border-background rounded-full" />
                         </div>
