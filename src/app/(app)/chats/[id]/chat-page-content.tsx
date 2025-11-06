@@ -41,7 +41,11 @@ export function ChatPageContent() {
 
   const loading = userLoading || chatLoading || !mounted;
 
-  if (loading || !mounted) {
+  if (!mounted) {
+    return <div className="h-full bg-background" />;
+  }
+
+  if (loading) {
     return (
       <Card className="h-full flex flex-col">
         <div className="p-4 border-b">
