@@ -115,8 +115,7 @@ export async function updateUserProfileAction(prevState: any, formData: FormData
     // Check if document exists
     const docSnap = await userRef.get();
     
-    // Ensure educationHistory is an array, even if it's empty
-    // Remove empty strings and convert to undefined for optional fields
+    // Prepare data to update
     const dataToUpdate: any = {
         name: profileData.name,
         username: profileData.username,
@@ -131,27 +130,29 @@ export async function updateUserProfileAction(prevState: any, formData: FormData
         sports: profileData.sports || [],
     };
 
-    // Use set with merge if document doesn't exist, otherwise use update
+    // Always use set with merge to avoid Failed_Precondition errors
+    // This works whether document exists or not, and preserves existing fields
     if (!docSnap.exists) {
         // Document doesn't exist, create it with all required fields
         await userRef.set({
             ...dataToUpdate,
             id: uid,
             email: decodedToken.email || '',
-            followersCount: 0,
-            followingCount: 0,
-            knowledgePoints: 0,
-            wallet: { knowledgeCoins: 0 },
-            settings: {
+            followersCount: docSnap.data()?.followersCount || 0,
+            followingCount: docSnap.data()?.followingCount || 0,
+            knowledgePoints: docSnap.data()?.knowledgePoints || 0,
+            wallet: docSnap.data()?.wallet || { knowledgeCoins: 0 },
+            settings: docSnap.data()?.settings || {
                 restrictSpending: false,
                 restrictChat: false,
                 restrictTalentHub: false,
             },
-            createdAt: FieldValue.serverTimestamp(),
+            createdAt: docSnap.data()?.createdAt || FieldValue.serverTimestamp(),
         }, { merge: true });
     } else {
-        // Document exists, update it
-        await userRef.update(dataToUpdate);
+        // Document exists, use set with merge to update only specified fields
+        // This prevents Failed_Precondition errors and preserves existing fields
+        await userRef.set(dataToUpdate, { merge: true });
     }
     
     revalidatePath(`/profile/${uid}`);
