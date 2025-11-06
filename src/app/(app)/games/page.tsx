@@ -110,17 +110,17 @@ export default function GamesPage() {
           setGameKey(prev => prev + 1); // Reset key when closing
         }
       }}>
-        <SheetContent className="w-full sm:max-w-2xl lg:max-w-4xl">
+        <SheetContent className="w-full sm:max-w-2xl lg:max-w-4xl overflow-y-auto">
           {selectedGame && (
             <ErrorBoundary onReset={() => {
               setSelectedGame(null);
               setGameKey(prev => prev + 1);
             }}>
-              <SheetHeader>
+              <SheetHeader className="sticky top-0 bg-background z-10 pb-4">
                 <SheetTitle className="text-2xl font-headline">{selectedGame.title}</SheetTitle>
                 <SheetDescription>{selectedGame.description}</SheetDescription>
               </SheetHeader>
-              <div className="mt-4 h-[calc(100vh-8rem)] rounded-lg bg-secondary p-4">
+              <div className="mt-4 min-h-[calc(100vh-12rem)] rounded-lg bg-secondary p-4 overflow-y-auto">
                 <selectedGame.component key={`${selectedGame.id}-${gameKey}`} {...(selectedGame.props || {})} />
               </div>
             </ErrorBoundary>

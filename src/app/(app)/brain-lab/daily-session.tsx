@@ -107,13 +107,13 @@ export function DailySession() {
           </>
         )}
          <Sheet open={!!activeGame} onOpenChange={(open) => !open && setActiveGameId(null)}>
-            <SheetContent>
+            <SheetContent className="overflow-y-auto">
               {activeGame && (
                 <>
-                    <SheetHeader>
+                    <SheetHeader className="sticky top-0 bg-background z-10 pb-4">
                         <SheetTitle>{activeGame.title}</SheetTitle>
                     </SheetHeader>
-                    <div className="h-[calc(100vh-8rem)] pt-4">
+                    <div className="min-h-[calc(100vh-12rem)] pt-4 overflow-y-auto">
                         <activeGame.component onComplete={() => handleGameComplete(activeGame.id)} />
                     </div>
                 </>
