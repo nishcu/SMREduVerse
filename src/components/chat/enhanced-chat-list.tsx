@@ -133,9 +133,10 @@ function ChatListItem({
     user: any;
 }) {
     // Get online status for private chats (optional - gracefully handle permission errors)
+    // Only set up listener if we have a valid participant ID
     const presenceQuery = useMemo(
-        () => otherParticipantId ? doc(db, 'presence', otherParticipantId) : null,
-        [otherParticipantId]
+        () => (otherParticipantId && otherParticipantId !== user?.id) ? doc(db, 'presence', otherParticipantId) : null,
+        [otherParticipantId, user?.id]
     );
     const { data: presence, error: presenceError } = useDoc<any>(presenceQuery);
     const isOnline = presence?.status === 'online' && !presenceError;
