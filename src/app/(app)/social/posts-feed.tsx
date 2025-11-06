@@ -31,11 +31,10 @@ import { useMemo } from 'react';
 import { getInitials } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect } from 'react';
 import { CommentDialog } from '@/components/comment-dialog';
 import { toggleLikeAction, checkLikedAction, getLikedUsersAction, toggleFollowAction, checkFollowingAction } from './actions';
 import { getOrCreateChatAction } from '@/app/(app)/chats/actions';
-import { useRouter } from 'next/navigation';
 
 function PostSkeleton() {
   return (
@@ -64,8 +63,6 @@ function PostSkeleton() {
 function PostCard({ post }: { post: Post }) {
   const { user, firebaseUser } = useAuth();
   const { toast } = useToast();
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
   const [likes, setLikes] = useState(post.likes);
   const [isLiked, setIsLiked] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
