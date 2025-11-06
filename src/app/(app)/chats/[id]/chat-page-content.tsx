@@ -42,7 +42,6 @@ export function ChatPageContent() {
   const loading = userLoading || chatLoading || !mounted;
 
   if (loading || !mounted) {
-    console.log('ChatPage loading:', { userLoading, chatLoading, chatId, user: user?.id });
     return (
       <Card className="h-full flex flex-col">
         <div className="p-4 border-b">
@@ -62,7 +61,6 @@ export function ChatPageContent() {
   }
 
   if (error || !chat) {
-    console.warn('Chat fetch failed:', { error: error?.message, chatId });
     // If chat doesn't exist yet, wait a bit and retry (for newly created chats)
     if (!chat && !error) {
       return (
@@ -87,10 +85,6 @@ export function ChatPageContent() {
   }
 
   if (!chat.participants.includes(user.id)) {
-    console.warn(
-      `Access denied for chat ${chatId}: User ${user.id} not in participants`,
-      { participants: chat.participants }
-    );
     notFound();
   }
 
