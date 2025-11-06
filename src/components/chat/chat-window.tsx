@@ -93,7 +93,7 @@ export function ChatWindow({ chatId, chat }: ChatWindowProps) {
     // Moderate message before sending
     const moderationResult = await moderateMessage(newMessage);
     if(moderationResult.flagForReview) {
-        console.warn('Message flagged:', moderationResult.reason);
+        // Message flagged for review - silently handle
         // Optionally, show a toast to the user
     }
 
@@ -120,7 +120,7 @@ export function ChatWindow({ chatId, chat }: ChatWindowProps) {
 
       setNewMessage('');
     } catch (err) {
-      console.error('Error sending message:', err);
+      // Error sending message - silently fail
     }
   };
   

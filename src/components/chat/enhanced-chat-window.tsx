@@ -168,7 +168,7 @@ export function EnhancedChatWindow({ chatId, chat }: ChatWindowProps) {
             await batch.commit();
           }
         } catch (error) {
-          console.error('Error marking messages as read:', error);
+          // Error marking messages as read - silently fail
         }
       };
       markAsRead();
@@ -286,13 +286,18 @@ export function EnhancedChatWindow({ chatId, chat }: ChatWindowProps) {
           const { createChatNotificationAction } = await import('@/app/(app)/chats/actions');
           await createChatNotificationAction(chatId, user.id, newMessage.trim(), otherParticipantId);
         } catch (error) {
-          console.error('Error creating notification:', error);
+          // Error creating notification - silently fail
         }
       }
 
       setNewMessage('');
     } catch (err) {
-      console.error('Error sending message:', err);
+      // Error sending message - show toast instead
+      toast({
+        title: 'Failed to send message',
+        description: 'Please try again.',
+        variant: 'destructive',
+      });
       toast({
         variant: 'destructive',
         title: 'Error',
