@@ -219,7 +219,7 @@ function PostCard({ post }: { post: Post }) {
     }
   };
 
-  const handleStartChat = () => {
+  const handleStartChat = async () => {
     if (!user || !firebaseUser || isStartingChat || isOwnPost) return;
     
     if (!user.id || !post.author.uid) {
@@ -243,33 +243,28 @@ function PostCard({ post }: { post: Post }) {
     
     setIsStartingChat(true);
     
-    startTransition(async () => {
-      try {
-        const result = await getOrCreateChatAction(user.id, post.author.uid);
-        if (result.success && result.chatId) {
-          router.push(`/chats/${result.chatId}`);
-          toast({
-            title: 'Chat Started',
-            description: `You can now chat with ${post.author.name}.`,
-          });
-        } else {
-          toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: result.error || 'Could not start chat.',
-          });
-        }
-      } catch (error: any) {
-        console.error('Error starting chat:', error);
+    try {
+      const result = await getOrCreateChatAction(user.id, post.author.uid);
+      if (result.success && result.chatId) {
+        // Use window.location.href to avoid hydration issues
+        window.location.href = `/chats/${result.chatId}`;
+      } else {
+        setIsStartingChat(false);
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: error.message || 'Failed to start chat. Please try again.',
+          description: result.error || 'Could not start chat.',
         });
-      } finally {
-        setIsStartingChat(false);
       }
-    });
+    } catch (error: any) {
+      console.error('Error starting chat:', error);
+      setIsStartingChat(false);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to start chat. Please try again.',
+      });
+    }
   };
 
   const handleReport = () => {

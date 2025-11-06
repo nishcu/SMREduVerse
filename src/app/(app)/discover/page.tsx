@@ -242,7 +242,7 @@ export default function DiscoverPage() {
     }
   };
 
-  const handleStartChat = (targetUserId: string) => {
+  const handleStartChat = async (targetUserId: string) => {
     if (!user || !firebaseUser) {
       toast({
         variant: 'destructive',
@@ -273,33 +273,28 @@ export default function DiscoverPage() {
 
     setChatLoading(prev => ({ ...prev, [targetUserId]: true }));
     
-    startTransition(async () => {
-      try {
-        const result = await getOrCreateChatAction(user.id, targetUserId);
-        if (result.success && result.chatId) {
-          router.push(`/chats/${result.chatId}`);
-          toast({
-            title: 'Chat Started',
-            description: `You can now chat with ${users.find(u => u.id === targetUserId)?.name || 'this user'}.`,
-          });
-        } else {
-          toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: result.error || 'Could not start chat.',
-          });
-        }
-      } catch (error: any) {
-        console.error('Error starting chat:', error);
+    try {
+      const result = await getOrCreateChatAction(user.id, targetUserId);
+      if (result.success && result.chatId) {
+        // Use window.location.href to avoid hydration issues
+        window.location.href = `/chats/${result.chatId}`;
+      } else {
+        setChatLoading(prev => ({ ...prev, [targetUserId]: false }));
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: error.message || 'Failed to start chat. Please try again.',
+          description: result.error || 'Could not start chat.',
         });
-      } finally {
-        setChatLoading(prev => ({ ...prev, [targetUserId]: false }));
       }
-    });
+    } catch (error: any) {
+      console.error('Error starting chat:', error);
+      setChatLoading(prev => ({ ...prev, [targetUserId]: false }));
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to start chat. Please try again.',
+      });
+    }
   };
 
   if (isLoading) {
