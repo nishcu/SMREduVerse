@@ -218,7 +218,7 @@ function PostCard({ post }: { post: Post }) {
     }
   };
 
-  const handleStartChat = async () => {
+  const handleStartChat = () => {
     if (!user || !firebaseUser || isStartingChat || isOwnPost) return;
     
     if (!user.id || !post.author.uid) {
@@ -241,34 +241,34 @@ function PostCard({ post }: { post: Post }) {
     }
     
     setIsStartingChat(true);
-    try {
-      const result = await getOrCreateChatAction(user.id, post.author.uid);
-      if (result.success && result.chatId) {
-        // Use setTimeout to avoid hydration issues
-        setTimeout(() => {
+    
+    startTransition(async () => {
+      try {
+        const result = await getOrCreateChatAction(user.id, post.author.uid);
+        if (result.success && result.chatId) {
           router.push(`/chats/${result.chatId}`);
-        }, 100);
-        toast({
-          title: 'Chat Started',
-          description: `You can now chat with ${post.author.name}.`,
-        });
-      } else {
+          toast({
+            title: 'Chat Started',
+            description: `You can now chat with ${post.author.name}.`,
+          });
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: result.error || 'Could not start chat.',
+          });
+        }
+      } catch (error: any) {
+        console.error('Error starting chat:', error);
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: result.error || 'Could not start chat.',
+          description: error.message || 'Failed to start chat. Please try again.',
         });
+      } finally {
+        setIsStartingChat(false);
       }
-    } catch (error: any) {
-      console.error('Error starting chat:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error.message || 'Failed to start chat. Please try again.',
-      });
-    } finally {
-      setIsStartingChat(false);
-    }
+    });
   };
 
   const handleReport = () => {

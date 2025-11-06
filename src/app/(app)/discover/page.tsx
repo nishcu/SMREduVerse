@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -126,6 +126,7 @@ export default function DiscoverPage() {
   const { user, firebaseUser } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [followingStatus, setFollowingStatus] = useState<Record<string, boolean>>({});
@@ -241,7 +242,7 @@ export default function DiscoverPage() {
     }
   };
 
-  const handleStartChat = async (targetUserId: string) => {
+  const handleStartChat = (targetUserId: string) => {
     if (!user || !firebaseUser) {
       toast({
         variant: 'destructive',
@@ -271,34 +272,34 @@ export default function DiscoverPage() {
     }
 
     setChatLoading(prev => ({ ...prev, [targetUserId]: true }));
-    try {
-      const result = await getOrCreateChatAction(user.id, targetUserId);
-      if (result.success && result.chatId) {
-        // Use setTimeout to avoid hydration issues
-        setTimeout(() => {
+    
+    startTransition(async () => {
+      try {
+        const result = await getOrCreateChatAction(user.id, targetUserId);
+        if (result.success && result.chatId) {
           router.push(`/chats/${result.chatId}`);
-        }, 100);
-        toast({
-          title: 'Chat Started',
-          description: `You can now chat with ${users.find(u => u.id === targetUserId)?.name || 'this user'}.`,
-        });
-      } else {
+          toast({
+            title: 'Chat Started',
+            description: `You can now chat with ${users.find(u => u.id === targetUserId)?.name || 'this user'}.`,
+          });
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: result.error || 'Could not start chat.',
+          });
+        }
+      } catch (error: any) {
+        console.error('Error starting chat:', error);
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: result.error || 'Could not start chat.',
+          description: error.message || 'Failed to start chat. Please try again.',
         });
+      } finally {
+        setChatLoading(prev => ({ ...prev, [targetUserId]: false }));
       }
-    } catch (error: any) {
-      console.error('Error starting chat:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error.message || 'Failed to start chat. Please try again.',
-      });
-    } finally {
-      setChatLoading(prev => ({ ...prev, [targetUserId]: false }));
-    }
+    });
   };
 
   if (isLoading) {
