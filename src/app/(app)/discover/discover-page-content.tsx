@@ -209,7 +209,7 @@ export function DiscoverPageContent() {
       if (result.success) {
         setFollowingStatus((prev) => ({
           ...prev,
-          [userId]: result.isFollowing || false,
+          [userId]: result.following || false,
         }));
 
         // Update user counts
@@ -218,13 +218,13 @@ export function DiscoverPageContent() {
             if (u.id === userId) {
               return {
                 ...u,
-                followersCount: (u.followersCount || 0) + (result.isFollowing ? 1 : -1),
+                followersCount: (u.followersCount || 0) + (result.following ? 1 : -1),
               };
             }
             if (u.id === user.id) {
               return {
                 ...u,
-                followingCount: (u.followingCount || 0) + (result.isFollowing ? 1 : -1),
+                followingCount: (u.followingCount || 0) + (result.following ? 1 : -1),
               };
             }
             return u;
@@ -232,8 +232,8 @@ export function DiscoverPageContent() {
         );
 
         toast({
-          title: result.isFollowing ? 'Following' : 'Unfollowed',
-          description: result.isFollowing
+          title: result.following ? 'Following' : 'Unfollowed',
+          description: result.following
             ? `You are now following ${users.find((u) => u.id === userId)?.name || 'this user'}`
             : `You unfollowed ${users.find((u) => u.id === userId)?.name || 'this user'}`,
         });
