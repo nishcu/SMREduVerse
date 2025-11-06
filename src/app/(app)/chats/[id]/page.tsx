@@ -111,7 +111,13 @@ export default function ChatPage() {
   const isOnline = presence?.status === 'online' && !presenceError;
 
   // Use state to prevent hydration mismatch with date formatting
-  const [chatDescription, setChatDescription] = useState<string>('');
+  const [chatDescription, setChatDescription] = useState<string>(() => {
+    // Initial value based on chat type (no date formatting to avoid hydration mismatch)
+    if (chat.type === 'group') {
+      return chat.description || `Group chat with ${chat.participants.length} members`;
+    }
+    return 'Offline'; // Default for private chats
+  });
 
   useEffect(() => {
     if (chat.type === 'group') {
@@ -152,7 +158,7 @@ export default function ChatPage() {
         </div>
         <div className="flex-1 min-w-0">
           <h1 className="font-semibold text-lg truncate">{chatName}</h1>
-          <p className="text-sm text-muted-foreground truncate">{chatDescription}</p>
+          <p className="text-sm text-muted-foreground truncate" suppressHydrationWarning>{chatDescription}</p>
         </div>
       </div>
       <div className="flex-grow">
