@@ -203,5 +203,13 @@ service cloud.firestore {
       allow get, list: if true;
       allow create, update, delete: if isSuperAdmin();
     }
+
+    // Presence (Online/Offline Status)
+    match /presence/{userId} {
+      // Allow authenticated users to read any user's presence (for online status)
+      allow read: if isSignedIn();
+      // Allow users to write only their own presence document
+      allow write: if isOwner(userId);
+    }
   }
 }
