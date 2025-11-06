@@ -388,7 +388,12 @@ export function PostsFeed({ feedType = 'for-you' }: PostsFeedProps) {
           const { getFollowingFeedAction } = await import('./actions');
           const result = await getFollowingFeedAction(idToken, 20);
           if (result.success) {
-            setServerPosts(result.posts as Post[]);
+            // Convert ISO string timestamps back to Date objects for client-side use
+            const formattedPosts = result.posts.map((post: any) => ({
+              ...post,
+              createdAt: post.createdAt ? (typeof post.createdAt === 'string' ? { toDate: () => new Date(post.createdAt) } : post.createdAt) : null,
+            }));
+            setServerPosts(formattedPosts as Post[]);
           } else {
             setError(new Error(result.error || 'Failed to load feed'));
           }
@@ -396,7 +401,12 @@ export function PostsFeed({ feedType = 'for-you' }: PostsFeedProps) {
           const { getTrendingFeedAction } = await import('./actions');
           const result = await getTrendingFeedAction(20);
           if (result.success) {
-            setServerPosts(result.posts as Post[]);
+            // Convert ISO string timestamps back to Date objects for client-side use
+            const formattedPosts = result.posts.map((post: any) => ({
+              ...post,
+              createdAt: post.createdAt ? (typeof post.createdAt === 'string' ? { toDate: () => new Date(post.createdAt) } : post.createdAt) : null,
+            }));
+            setServerPosts(formattedPosts as Post[]);
           } else {
             setError(new Error(result.error || 'Failed to load feed'));
           }

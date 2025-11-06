@@ -447,10 +447,16 @@ export async function getFollowingFeedAction(idToken: string, limit: number = 20
       .get();
 
     // If more than 10 users, query in batches
-    let posts = postsSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    let posts = postsSnapshot.docs.map((doc) => {
+      const data = doc.data();
+      // Convert Firestore Timestamp to serializable format
+      const createdAt = data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt;
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: createdAt,
+      };
+    });
 
     if (followingUserIds.length > 10) {
       const remainingUserIds = followingUserIds.slice(10);
@@ -463,18 +469,29 @@ export async function getFollowingFeedAction(idToken: string, limit: number = 20
           .limit(limit)
           .get();
         
-        const batchPosts = batchSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const batchPosts = batchSnapshot.docs.map((doc) => {
+          const data = doc.data();
+          // Convert Firestore Timestamp to serializable format
+          const createdAt = data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt;
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: createdAt,
+          };
+        });
         posts = [...posts, ...batchPosts];
       }
       
       // Sort by createdAt and limit
       posts = posts
         .sort((a, b) => {
-          const aTime = a.createdAt?.toMillis() || 0;
-          const bTime = b.createdAt?.toMillis() || 0;
+          // Handle both ISO string and Timestamp formats
+          const aTime = typeof a.createdAt === 'string' 
+            ? new Date(a.createdAt).getTime() 
+            : a.createdAt?.toMillis?.() || 0;
+          const bTime = typeof b.createdAt === 'string'
+            ? new Date(b.createdAt).getTime()
+            : b.createdAt?.toMillis?.() || 0;
           return bTime - aTime;
         })
         .slice(0, limit);
@@ -508,9 +525,14 @@ export async function getTrendingFeedAction(limit: number = 20) {
       .map((doc) => {
         const data = doc.data();
         const engagement = (data.likes || 0) + (data.comments || 0) * 2;
+        
+        // Convert Firestore Timestamp to serializable format
+        const createdAt = data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt;
+        
         return {
           id: doc.id,
           ...data,
+          createdAt: createdAt,
           engagement,
         };
       })
