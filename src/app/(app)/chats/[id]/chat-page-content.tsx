@@ -22,7 +22,9 @@ type ParticipantDetail = {
 };
 
 export function ChatPageContent() {
+  // ALL HOOKS MUST BE CALLED FIRST - BEFORE ANY EARLY RETURNS
   const [mounted, setMounted] = useState(false);
+  const [chatDescription, setChatDescription] = useState<string>('');
   const params = useParams();
   const chatId = params.id as string;
   const { user, loading: userLoading } = useAuth();
@@ -39,6 +41,56 @@ export function ChatPageContent() {
 
   const { data: chat, loading: chatLoading, error } = useDoc<Chat>(chatRef);
 
+  // Compute derived values using useMemo (safe even if chat/user is null)
+  const otherParticipant = useMemo((): ParticipantDetail | null => {
+    if (!chat || !user) return null;
+    if (chat.type === 'group') return null;
+    if (!chat.participantDetails) return null;
+    const participants = Object.values(chat.participantDetails) as ParticipantDetail[];
+    return participants.find((p) => p.uid !== user.id) || null;
+  }, [chat, user?.id]);
+
+  const chatName = useMemo(() => {
+    if (!chat) return 'Loading...';
+    if (chat.type === 'group') {
+      return chat.name || `Group Chat (${chat.participants.length})`;
+    }
+    return otherParticipant?.name || 'Private Chat';
+  }, [chat, otherParticipant]);
+
+  // Get online status for private chats (optional - gracefully handle permission errors)
+  const presenceRef = useMemo(
+    () => (mounted && otherParticipant?.uid) ? (doc(db, 'presence', otherParticipant.uid) as DocumentReference<any>) : null,
+    [mounted, otherParticipant?.uid]
+  );
+  const { data: presence, error: presenceError } = useDoc<any>(presenceRef);
+  const isOnline = mounted && presence?.status === 'online' && !presenceError;
+
+  // Only update description after mount and when data is available
+  useEffect(() => {
+    if (!mounted || !chat) return;
+    
+    if (chat.type === 'group') {
+      setChatDescription(chat.description || `Group chat with ${chat.participants.length} members`);
+      return;
+    }
+    // If presence data is not available (permission error), just show offline
+    if (presenceError || !presence) {
+      setChatDescription('Offline');
+      return;
+    }
+    // Only format date on client side after mount
+    try {
+      const statusText = isOnline ? 'Online' : presence?.lastSeen 
+        ? `Last seen ${formatDistanceToNow(presence.lastSeen.toDate(), { addSuffix: true })}`
+        : 'Offline';
+      setChatDescription(statusText);
+    } catch (error) {
+      setChatDescription('Offline');
+    }
+  }, [mounted, chat, isOnline, presence, presenceError]);
+
+  // NOW we can do early returns after all hooks are called
   const loading = userLoading || chatLoading || !mounted;
 
   if (!mounted) {
@@ -91,56 +143,6 @@ export function ChatPageContent() {
   if (!chat.participants.includes(user.id)) {
     notFound();
   }
-
-  const otherParticipant = useMemo((): ParticipantDetail | null => {
-    if (chat.type === 'group') return null;
-    if (!chat.participantDetails) return null;
-    const participants = Object.values(chat.participantDetails) as ParticipantDetail[];
-    return participants.find((p) => p.uid !== user.id) || null;
-  }, [chat, user?.id]);
-
-  const chatName = useMemo(() => {
-    if (chat.type === 'group') {
-      return chat.name || `Group Chat (${chat.participants.length})`;
-    }
-    return otherParticipant?.name || 'Private Chat';
-  }, [chat, otherParticipant]);
-
-  // Get online status for private chats (optional - gracefully handle permission errors)
-  const presenceRef = useMemo(
-    () => (mounted && otherParticipant?.uid) ? (doc(db, 'presence', otherParticipant.uid) as DocumentReference<any>) : null,
-    [mounted, otherParticipant?.uid]
-  );
-  const { data: presence, error: presenceError } = useDoc<any>(presenceRef);
-  const isOnline = mounted && presence?.status === 'online' && !presenceError;
-
-  // Use state to prevent hydration mismatch with date formatting
-  // Initialize with empty string to avoid using chat data during initial render
-  const [chatDescription, setChatDescription] = useState<string>('');
-
-  // Only update description after mount and when data is available
-  useEffect(() => {
-    if (!mounted || !chat) return;
-    
-    if (chat.type === 'group') {
-      setChatDescription(chat.description || `Group chat with ${chat.participants.length} members`);
-      return;
-    }
-    // If presence data is not available (permission error), just show offline
-    if (presenceError || !presence) {
-      setChatDescription('Offline');
-      return;
-    }
-    // Only format date on client side after mount
-    try {
-      const statusText = isOnline ? 'Online' : presence?.lastSeen 
-        ? `Last seen ${formatDistanceToNow(presence.lastSeen.toDate(), { addSuffix: true })}`
-        : 'Offline';
-      setChatDescription(statusText);
-    } catch (error) {
-      setChatDescription('Offline');
-    }
-  }, [mounted, chat, isOnline, presence, presenceError]);
 
   return (
     <Card className="h-full flex flex-col">
