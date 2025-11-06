@@ -206,6 +206,34 @@ function RecommendationCard({ recommendation }: { recommendation: LearningRecomm
   const Icon = getIcon();
   const scoreColor = recommendation.score >= 80 ? 'text-green-500' : recommendation.score >= 60 ? 'text-yellow-500' : 'text-gray-500';
 
+  // Determine the link URL and label based on recommendation type
+  const getLinkProps = () => {
+    if (recommendation.type === 'course' && recommendation.courseId) {
+      return {
+        href: `/courses/${recommendation.courseId}`,
+        label: 'View Course',
+        actionLabel: 'Explore Course',
+      };
+    }
+    if (recommendation.type === 'study_buddy' && recommendation.userId) {
+      return {
+        href: `/profile/${recommendation.userId}`,
+        label: 'View Profile',
+        actionLabel: 'View Profile',
+      };
+    }
+    if (recommendation.type === 'content' && recommendation.postId) {
+      return {
+        href: `/social#post-${recommendation.postId}`,
+        label: 'View Post',
+        actionLabel: 'View Post',
+      };
+    }
+    return null;
+  };
+
+  const linkProps = getLinkProps();
+
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader>
@@ -216,20 +244,12 @@ function RecommendationCard({ recommendation }: { recommendation: LearningRecomm
             </div>
             <div className="flex-1">
               <CardTitle className="text-lg">
-                {recommendation.type === 'course' && recommendation.courseId && (
-                  <Link href={`/courses/${recommendation.courseId}`} className="hover:underline">
-                    View Course
+                {linkProps ? (
+                  <Link href={linkProps.href} className="hover:underline">
+                    {linkProps.label}
                   </Link>
-                )}
-                {recommendation.type === 'study_buddy' && recommendation.userId && (
-                  <Link href={`/profile/${recommendation.userId}`} className="hover:underline">
-                    View Profile
-                  </Link>
-                )}
-                {recommendation.type === 'content' && recommendation.postId && (
-                  <Link href={`/social#post-${recommendation.postId}`} className="hover:underline">
-                    View Post
-                  </Link>
+                ) : (
+                  <span>Recommendation</span>
                 )}
               </CardTitle>
               <CardDescription className="mt-1">{recommendation.reason}</CardDescription>
@@ -254,23 +274,17 @@ function RecommendationCard({ recommendation }: { recommendation: LearningRecomm
         </div>
       </CardHeader>
       <CardContent>
-        <Button asChild variant="outline" size="sm">
-          {recommendation.type === 'course' && recommendation.courseId && (
-            <Link href={`/courses/${recommendation.courseId}`}>
-              Explore Course <ArrowRight className="ml-2 h-4 w-4" />
+        {linkProps ? (
+          <Button asChild variant="outline" size="sm">
+            <Link href={linkProps.href}>
+              {linkProps.actionLabel} <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
-          )}
-          {recommendation.type === 'study_buddy' && recommendation.userId && (
-            <Link href={`/profile/${recommendation.userId}`}>
-              View Profile <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          )}
-          {recommendation.type === 'content' && recommendation.postId && (
-            <Link href={`/social#post-${recommendation.postId}`}>
-              View Post <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          )}
-        </Button>
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" disabled>
+            No link available
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
