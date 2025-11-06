@@ -132,26 +132,29 @@ export async function updateUserProfileAction(prevState: any, formData: FormData
 
     // Always use set with merge to avoid Failed_Precondition errors
     // This works whether document exists or not, and preserves existing fields
+    const existingData = docSnap.exists ? docSnap.data() : null;
+    
     if (!docSnap.exists) {
         // Document doesn't exist, create it with all required fields
         await userRef.set({
             ...dataToUpdate,
             id: uid,
             email: decodedToken.email || '',
-            followersCount: docSnap.data()?.followersCount || 0,
-            followingCount: docSnap.data()?.followingCount || 0,
-            knowledgePoints: docSnap.data()?.knowledgePoints || 0,
-            wallet: docSnap.data()?.wallet || { knowledgeCoins: 0 },
-            settings: docSnap.data()?.settings || {
+            followersCount: existingData?.followersCount || 0,
+            followingCount: existingData?.followingCount || 0,
+            knowledgePoints: existingData?.knowledgePoints || 0,
+            wallet: existingData?.wallet || { knowledgeCoins: 0 },
+            settings: existingData?.settings || {
                 restrictSpending: false,
                 restrictChat: false,
                 restrictTalentHub: false,
             },
-            createdAt: docSnap.data()?.createdAt || FieldValue.serverTimestamp(),
+            createdAt: existingData?.createdAt || FieldValue.serverTimestamp(),
         }, { merge: true });
     } else {
         // Document exists, use set with merge to update only specified fields
         // This prevents Failed_Precondition errors and preserves existing fields
+        // Merge preserves all existing fields (followersCount, wallet, etc.)
         await userRef.set(dataToUpdate, { merge: true });
     }
     
