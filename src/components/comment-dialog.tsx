@@ -70,6 +70,7 @@ export function CommentDialog({ isOpen, onOpenChange, postId, postAuthorId, init
       setComments([]);
       setCommentText('');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, postId]);
   
   // Auto-refresh comments periodically when dialog is open
@@ -81,6 +82,7 @@ export function CommentDialog({ isOpen, onOpenChange, postId, postAuthorId, init
     }, 5000); // Refresh every 5 seconds
     
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, postId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
