@@ -131,10 +131,15 @@ export function ChatPageContent() {
       setChatDescription('Offline');
       return;
     }
-    const statusText = isOnline ? 'Online' : presence?.lastSeen 
-      ? `Last seen ${formatDistanceToNow(presence.lastSeen.toDate(), { addSuffix: true })}`
-      : 'Offline';
-    setChatDescription(statusText);
+    // Only format date on client side after mount
+    try {
+      const statusText = isOnline ? 'Online' : presence?.lastSeen 
+        ? `Last seen ${formatDistanceToNow(presence.lastSeen.toDate(), { addSuffix: true })}`
+        : 'Offline';
+      setChatDescription(statusText);
+    } catch (error) {
+      setChatDescription('Offline');
+    }
   }, [mounted, chat, isOnline, presence, presenceError]);
 
   return (
@@ -161,7 +166,7 @@ export function ChatPageContent() {
         <div className="flex-1 min-w-0">
           <h1 className="font-semibold text-lg truncate" suppressHydrationWarning>{chatName}</h1>
           <p className="text-sm text-muted-foreground truncate" suppressHydrationWarning>
-            {mounted ? chatDescription : 'Loading...'}
+            {chatDescription || 'Loading...'}
           </p>
         </div>
       </div>

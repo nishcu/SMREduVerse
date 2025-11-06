@@ -271,11 +271,10 @@ export function DiscoverPageContent() {
       const result = await getOrCreateChatAction(user.id, userId);
 
       if (result.success && result.chatId) {
-        // Small delay to ensure chat is created before navigation
-        setTimeout(() => {
-          router.push(`/chats/${result.chatId}`);
-        }, 300);
+        // Use window.location.href to force full page reload and avoid hydration errors
+        window.location.href = `/chats/${result.chatId}`;
       } else {
+        setChatLoading((prev) => ({ ...prev, [userId]: false }));
         toast({
           variant: 'destructive',
           title: 'Error',
@@ -283,13 +282,12 @@ export function DiscoverPageContent() {
         });
       }
     } catch (error: any) {
+      setChatLoading((prev) => ({ ...prev, [userId]: false }));
       toast({
         variant: 'destructive',
         title: 'Error',
         description: error.message || 'Failed to start chat.',
       });
-    } finally {
-      setChatLoading((prev) => ({ ...prev, [userId]: false }));
     }
   };
 
