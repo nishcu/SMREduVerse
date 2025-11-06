@@ -255,7 +255,7 @@ export interface CoinBundle {
 
 export interface Notification {
   id: string;
-  type: 'new_follower' | 'course_enrollment' | 'contest_win' | 'post_like';
+  type: 'new_follower' | 'course_enrollment' | 'contest_win' | 'post_like' | 'post_comment';
   actor: {
     name: string;
     avatarUrl: string;
@@ -264,8 +264,9 @@ export interface Notification {
   data?: {
     courseName?: string;
     contestName?: string;
+    postId?: string;
   };
-  timestamp: Date;
+  timestamp: Date | any; // Can be Firestore Timestamp
   read: boolean;
 }
 

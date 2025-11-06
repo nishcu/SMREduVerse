@@ -162,9 +162,21 @@ export async function createCommentAction(postId: string, content: string, idTok
 
     // Update post comment count
     const postRef = db.collection('posts').doc(postId);
+    const postSnap = await postRef.get();
+    const postData = postSnap.data();
+    
     await postRef.update({
       comments: FieldValue.increment(1),
     });
+
+    // Create notification for post author (if not commenting on own post)
+    if (postData && postData.authorUid !== uid) {
+      await createNotificationAction(postData.authorUid, {
+        type: 'post_comment',
+        actorUid: uid,
+        postId: postId,
+      }).catch(err => console.error('Error creating comment notification:', err));
+    }
 
     revalidatePath('/social');
     return { success: true, error: null };
@@ -234,6 +246,18 @@ export async function toggleLikeAction(postId: string, idToken: string) {
       await postRef.update({
         likes: FieldValue.increment(1),
       });
+      
+      // Create notification for post author (if not liking own post)
+      const postSnap = await postRef.get();
+      const postData = postSnap.data();
+      if (postData && postData.authorUid !== uid) {
+        await createNotificationAction(postData.authorUid, {
+          type: 'post_like',
+          actorUid: uid,
+          postId: postId,
+        }).catch(err => console.error('Error creating like notification:', err));
+      }
+      
       return { success: true, liked: true };
     }
   } catch (error: any) {
@@ -359,6 +383,12 @@ export async function toggleFollowAction(targetUserId: string, idToken: string) 
       await targetUserProfileRef.update({
         followersCount: FieldValue.increment(1),
       });
+
+      // Create notification for the user being followed
+      await createNotificationAction(targetUserId, {
+        type: 'new_follower',
+        actorUid: currentUserId,
+      }).catch(err => console.error('Error creating follow notification:', err));
 
       return { success: true, following: true };
     }
@@ -494,6 +524,135 @@ export async function getTrendingFeedAction(limit: number = 20) {
       success: false,
       error: error.message || 'Failed to load trending feed.',
       posts: [],
+    };
+  }
+}
+
+// Notification System
+interface CreateNotificationParams {
+  type: 'post_like' | 'post_comment' | 'new_follower';
+  actorUid: string;
+  postId?: string;
+}
+
+async function createNotificationAction(targetUserId: string, params: CreateNotificationParams) {
+  const db = getAdminDb();
+  
+  try {
+    // Get actor profile
+    const actorProfileRef = db.doc(`users/${params.actorUid}/profile/${params.actorUid}`);
+    const actorProfileSnap = await actorProfileRef.get();
+    
+    if (!actorProfileSnap.exists) {
+      console.error('Actor profile not found for notification');
+      return { success: false };
+    }
+    
+    const actorProfile = actorProfileSnap.data()!;
+    
+    // Create notification
+    const notificationRef = db.collection(`users/${targetUserId}/notifications`).doc();
+    await notificationRef.set({
+      type: params.type,
+      actor: {
+        uid: params.actorUid,
+        name: actorProfile.name || 'Anonymous',
+        avatarUrl: actorProfile.avatarUrl || '',
+      },
+      data: params.postId ? { postId: params.postId } : undefined,
+      read: false,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error creating notification:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Get Notifications
+export async function getNotificationsAction(idToken: string, limit: number = 50) {
+  const auth = getAdminAuth();
+  const db = getAdminDb();
+
+  try {
+    const decodedToken = await auth.verifyIdToken(idToken);
+    const uid = decodedToken.uid;
+
+    const notificationsSnapshot = await db
+      .collection(`users/${uid}/notifications`)
+      .orderBy('createdAt', 'desc')
+      .limit(limit)
+      .get();
+
+    const notifications = notificationsSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    return { success: true, notifications };
+  } catch (error: any) {
+    console.error('Error fetching notifications:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to load notifications.',
+      notifications: [],
+    };
+  }
+}
+
+// Mark Notification as Read
+export async function markNotificationReadAction(notificationId: string, idToken: string) {
+  const auth = getAdminAuth();
+  const db = getAdminDb();
+
+  try {
+    const decodedToken = await auth.verifyIdToken(idToken);
+    const uid = decodedToken.uid;
+
+    const notificationRef = db.doc(`users/${uid}/notifications/${notificationId}`);
+    await notificationRef.update({
+      read: true,
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error marking notification as read:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to mark notification as read.',
+    };
+  }
+}
+
+// Mark All Notifications as Read
+export async function markAllNotificationsReadAction(idToken: string) {
+  const auth = getAdminAuth();
+  const db = getAdminDb();
+
+  try {
+    const decodedToken = await auth.verifyIdToken(idToken);
+    const uid = decodedToken.uid;
+
+    const notificationsSnapshot = await db
+      .collection(`users/${uid}/notifications`)
+      .where('read', '==', false)
+      .get();
+
+    const batch = db.batch();
+    notificationsSnapshot.docs.forEach((doc) => {
+      batch.update(doc.ref, { read: true });
+    });
+
+    await batch.commit();
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error marking all notifications as read:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to mark all notifications as read.',
     };
   }
 }

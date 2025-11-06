@@ -1,16 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { Bell, UserPlus, Award, Heart, BookOpen, CheckCircle } from 'lucide-react';
+import { Bell, UserPlus, Award, Heart, BookOpen, CheckCircle, MessageCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { mockNotifications } from '@/lib/data';
 import type { Notification } from '@/lib/types';
-import { formatDistanceToNowStrict } from 'date-fns';
+import { formatDistanceToNowStrict, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/use-auth';
+import { getNotificationsAction, markNotificationReadAction, markAllNotificationsReadAction } from '@/app/(app)/social/actions';
+import { Skeleton } from './ui/skeleton';
 
 const getNotificationIcon = (type: Notification['type']) => {
   switch (type) {
@@ -22,6 +24,8 @@ const getNotificationIcon = (type: Notification['type']) => {
       return <Award className="h-6 w-6 text-amber-500" />;
     case 'post_like':
       return <Heart className="h-6 w-6 text-red-500" />;
+    case 'post_comment':
+      return <MessageCircle className="h-6 w-6 text-green-500" />;
     default:
       return <Bell className="h-6 w-6 text-gray-500" />;
   }
@@ -38,29 +42,96 @@ const getNotificationText = (notification: Notification) => {
             return <>Congratulations! You won the <span className="font-bold">{notification.data?.contestName}</span>.</>;
         case 'post_like':
             return <>{actor} liked your post.</>;
+        case 'post_comment':
+            return <>{actor} commented on your post.</>;
         default:
             return 'New notification';
     }
 };
 
 export function NotificationDropdown() {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const { firebaseUser } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+  
   const hasUnread = notifications.some((n) => !n.read);
 
-  const handleMarkAsRead = (id: string) => {
-    setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+  useEffect(() => {
+    if (isOpen && firebaseUser) {
+      loadNotifications();
+      
+      // Auto-refresh every 10 seconds when dropdown is open
+      const interval = setInterval(() => {
+        loadNotifications();
+      }, 10000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [isOpen, firebaseUser]);
+
+  const loadNotifications = async () => {
+    if (!firebaseUser) return;
+    
+    try {
+      const idToken = await firebaseUser.getIdToken();
+      const result = await getNotificationsAction(idToken, 50);
+      
+      if (result.success) {
+        // Convert Firestore timestamps to Date objects
+        const formattedNotifications = result.notifications.map((notif: any) => ({
+          ...notif,
+          timestamp: notif.createdAt?.toDate ? notif.createdAt.toDate() : new Date(notif.createdAt || Date.now()),
+        }));
+        setNotifications(formattedNotifications);
+      }
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMarkAsRead = async (id: string) => {
+    if (!firebaseUser) return;
+    
+    // Optimistic update
+    setNotifications(notifications.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    
+    try {
+      const idToken = await firebaseUser.getIdToken();
+      await markNotificationReadAction(id, idToken);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      // Revert on error
+      loadNotifications();
+    }
   };
   
-  const handleMarkAllAsRead = () => {
-    setNotifications(notifications.map(n => ({...n, read: true})))
+  const handleMarkAllAsRead = async () => {
+    if (!firebaseUser || !hasUnread) return;
+    
+    // Optimistic update
+    setNotifications(notifications.map(n => ({...n, read: true})));
+    
+    try {
+      const idToken = await firebaseUser.getIdToken();
+      await markAllNotificationsReadAction(idToken);
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      // Revert on error
+      loadNotifications();
+    }
   }
 
   const unreadNotifications = notifications.filter((n) => !n.read);
   
+  if (!firebaseUser) {
+    return null;
+  }
+  
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
@@ -80,24 +151,43 @@ export function NotificationDropdown() {
         <Tabs defaultValue="all" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="unread">Unread</TabsTrigger>
+            <TabsTrigger value="unread">Unread ({unreadNotifications.length})</TabsTrigger>
           </TabsList>
           <TabsContent value="all" className="max-h-96 overflow-y-auto">
-            {notifications.length > 0 ? (
-                notifications.map((notif) => (
-                    <NotificationItem key={notif.id} notification={notif} onRead={() => handleMarkAsRead(notif.id)} />
-                ))
+            {loading ? (
+              <div className="space-y-2 p-4">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            ) : notifications.length > 0 ? (
+              notifications.map((notif) => (
+                <NotificationItem 
+                  key={notif.id} 
+                  notification={notif} 
+                  onRead={() => handleMarkAsRead(notif.id)} 
+                />
+              ))
             ) : (
-                <p className="text-center text-muted-foreground p-4">No notifications yet.</p>
+              <p className="text-center text-muted-foreground p-4">No notifications yet.</p>
             )}
           </TabsContent>
           <TabsContent value="unread" className="max-h-96 overflow-y-auto">
-             {unreadNotifications.length > 0 ? (
-                unreadNotifications.map((notif) => (
-                    <NotificationItem key={notif.id} notification={notif} onRead={() => handleMarkAsRead(notif.id)} />
-                ))
+            {loading ? (
+              <div className="space-y-2 p-4">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            ) : unreadNotifications.length > 0 ? (
+              unreadNotifications.map((notif) => (
+                <NotificationItem 
+                  key={notif.id} 
+                  notification={notif} 
+                  onRead={() => handleMarkAsRead(notif.id)} 
+                />
+              ))
             ) : (
-                <p className="text-center text-muted-foreground p-4">No unread notifications.</p>
+              <p className="text-center text-muted-foreground p-4">No unread notifications.</p>
             )}
           </TabsContent>
         </Tabs>
@@ -107,20 +197,47 @@ export function NotificationDropdown() {
 }
 
 function NotificationItem({ notification, onRead }: { notification: Notification, onRead: () => void }) {
+    const timestamp = notification.timestamp instanceof Date 
+      ? notification.timestamp 
+      : notification.timestamp?.toDate 
+        ? notification.timestamp.toDate() 
+        : new Date();
+    
+    const notificationLink = notification.data?.postId 
+      ? `/social#post-${notification.data.postId}`
+      : `/profile/${notification.actor.uid}`;
+    
     return (
-         <div className={cn("flex items-start gap-3 p-3 hover:bg-secondary/50", !notification.read && "bg-secondary")}>
-            <div className="flex-shrink-0">{getNotificationIcon(notification.type)}</div>
-            <div className="flex-grow">
-                <div className="text-sm">{getNotificationText(notification)}</div>
-                <p className="text-xs text-muted-foreground">
-                    {formatDistanceToNowStrict(notification.timestamp, { addSuffix: true })}
-                </p>
+        <Link href={notificationLink} className={cn("flex items-start gap-3 p-3 hover:bg-secondary/50 cursor-pointer", !notification.read && "bg-secondary/50")}>
+            <Avatar className="h-10 w-10 flex-shrink-0">
+                <AvatarImage src={notification.actor.avatarUrl} />
+                <AvatarFallback>{notification.actor.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div className="flex-grow min-w-0">
+                <div className="flex items-start gap-2">
+                    <div className="flex-shrink-0 mt-0.5">{getNotificationIcon(notification.type)}</div>
+                    <div className="flex-grow min-w-0">
+                        <div className="text-sm break-words">{getNotificationText(notification)}</div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            {formatDistanceToNow(timestamp, { addSuffix: true })}
+                        </p>
+                    </div>
+                </div>
             </div>
             {!notification.read && (
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onRead}>
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 flex-shrink-0" 
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onRead();
+                    }}
+                >
                     <CheckCircle className="h-4 w-4" title="Mark as read" />
                 </Button>
             )}
-        </div>
+        </Link>
     )
 }
