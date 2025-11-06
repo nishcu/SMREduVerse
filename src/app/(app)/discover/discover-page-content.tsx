@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, UserPlus, CheckCircle, MessageSquare, Search as SearchIcon, Sparkles } from 'lucide-react';
+import { Users, UserPlus, UserCheck, MessageSquare, Search as SearchIcon, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { getInitials } from '@/lib/utils';
