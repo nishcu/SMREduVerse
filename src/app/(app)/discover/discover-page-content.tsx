@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, UserPlus, UserCheck, MessageSquare, Search, Sparkles } from 'lucide-react';
+import { Users, UserPlus, CheckCircle, MessageSquare, Search as SearchIcon, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { getInitials } from '@/lib/utils';
@@ -62,7 +62,7 @@ function UserCard({ user, isFollowing, onFollowToggle, onMessage, isLoading, isS
                     <Users className="h-4 w-4 animate-pulse" />
                   ) : isFollowing ? (
                     <>
-                      <UserCheck className="mr-2 h-4 w-4" />
+                      <CheckCircle className="mr-2 h-4 w-4" />
                       Following
                     </>
                   ) : (
@@ -318,7 +318,7 @@ export function DiscoverPageContent() {
         </CardHeader>
         <CardContent>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search users by name, username, or bio..."
               value={searchQuery}

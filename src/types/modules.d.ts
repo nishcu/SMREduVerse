@@ -3,6 +3,12 @@
 
 declare module 'react' {
   export * from 'react/index';
+  export function useState<T>(initialState: T | (() => T)): [T, (value: T | ((prev: T) => T)) => void];
+  export function useEffect(effect: () => void | (() => void), deps?: any[]): void;
+  export function useMemo<T>(factory: () => T, deps: any[]): T;
+  export function useCallback<T extends (...args: any[]) => any>(callback: T, deps: any[]): T;
+  export function useRef<T>(initialValue: T): { current: T };
+  export function useTransition(): [boolean, (callback: () => void) => void];
 }
 
 declare module 'react-dom' {
@@ -79,29 +85,13 @@ declare module 'lucide-react' {
   export const Trophy: any;
   export const Store: any;
   export const Gamepad2: any;
-  export const Target: any;
-  export const TrendingUp: any;
-  export const Sparkles: any;
-  export const Users: any;
-  export const PlusCircle: any;
-  export const Star: any;
-  export const Download: any;
-  export const Coins: any;
-  export const FileText: any;
-  export const Video: any;
-  export const Brain: any;
-  export const Zap: any;
-  export const Settings: any;
-  export const Shield: any;
-  export const LayoutGrid: any;
-  export const Home: any;
-  export const GraduationCap: any;
-  export const Book: any;
-  export const Users2: any;
-  export const MessageSquare2: any;
-  export const Trophy: any;
-  export const Store: any;
-  export const Gamepad2: any;
+  export const Search: any;
+  export const UserCheck: any;
+  export const User: any;
+  export const X: any;
+  export const Loader2: any;
+  export const ShoppingBag: any;
+  export const School: any;
   export function createLucideIcon(name: string, svgPath: string): any;
 }
 
