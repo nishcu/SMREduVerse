@@ -188,6 +188,18 @@ function PostCard({ post }: { post: Post }) {
           <span>Share</span>
         </Button>
       </CardFooter>
+      <CommentDialog
+        isOpen={isCommentDialogOpen}
+        onOpenChange={(open) => {
+          setIsCommentDialogOpen(open);
+          if (!open) {
+            // Refresh comment count when dialog closes
+            setCommentCount(post.comments);
+          }
+        }}
+        postId={post.id}
+        postAuthorId={post.author.uid}
+      />
     </Card>
   );
 }
