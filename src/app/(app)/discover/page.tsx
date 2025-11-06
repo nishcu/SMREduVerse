@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -125,8 +125,6 @@ function DiscoverSkeleton() {
 export default function DiscoverPage() {
   const { user, firebaseUser } = useAuth();
   const { toast } = useToast();
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [followingStatus, setFollowingStatus] = useState<Record<string, boolean>>({});
