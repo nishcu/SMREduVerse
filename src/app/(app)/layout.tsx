@@ -50,6 +50,7 @@ import { NotificationDropdown } from '@/components/notification-dropdown';
 import { Button } from '@/components/ui/button';
 import { GlobalSearch } from '@/components/global-search';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
+import { usePresence } from '@/lib/chat-presence';
 
 const navItems = {
   'Core': [
@@ -103,6 +104,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, logout, loading } = useAuth();
   const router = useRouter();
+  
+  // Track user online status
+  usePresence();
 
   useEffect(() => {
     if (!loading && !user) {

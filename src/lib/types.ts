@@ -255,7 +255,7 @@ export interface CoinBundle {
 
 export interface Notification {
   id: string;
-  type: 'new_follower' | 'course_enrollment' | 'contest_win' | 'post_like' | 'post_comment' | 'challenge_invite' | 'challenge_progress';
+  type: 'new_follower' | 'course_enrollment' | 'contest_win' | 'post_like' | 'post_comment' | 'challenge_invite' | 'challenge_progress' | 'chat_message';
   actor: {
     name: string;
     avatarUrl: string;
@@ -266,6 +266,8 @@ export interface Notification {
     contestName?: string;
     postId?: string;
     challengeId?: string;
+    chatId?: string;
+    messagePreview?: string;
   };
   timestamp: Date | any; // Can be Firestore Timestamp
   read: boolean;
@@ -446,6 +448,9 @@ export interface Chat {
   name?: string; // For group chats
   description?: string; // For group chats
   photoUrl?: string; // For group chats
+  unreadCount?: {
+    [uid: string]: number;
+  };
 }
 
 export interface ChatMessage {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { Bell, UserPlus, Award, Heart, BookOpen, CheckCircle, MessageCircle, Target, TrendingUp } from 'lucide-react';
+import { Bell, UserPlus, Award, Heart, BookOpen, CheckCircle, MessageCircle, Target, TrendingUp, MessageSquare } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Notification } from '@/lib/types';
 import { formatDistanceToNowStrict, formatDistanceToNow } from 'date-fns';
@@ -30,6 +30,8 @@ const getNotificationIcon = (type: Notification['type']) => {
       return <Target className="h-6 w-6 text-orange-500" />;
     case 'challenge_progress':
       return <TrendingUp className="h-6 w-6 text-indigo-500" />;
+    case 'chat_message':
+      return <MessageSquare className="h-6 w-6 text-blue-500" />;
     default:
       return <Bell className="h-6 w-6 text-gray-500" />;
   }
@@ -52,6 +54,8 @@ const getNotificationText = (notification: Notification) => {
             return <>{actor} joined your challenge!</>;
         case 'challenge_progress':
             return <>{actor} is making progress in a challenge you're both in.</>;
+        case 'chat_message':
+            return <>{actor} sent you a message: <span className="font-medium">{notification.data?.messagePreview?.slice(0, 50)}...</span></>;
         default:
             return 'New notification';
     }
@@ -211,7 +215,9 @@ function NotificationItem({ notification, onRead }: { notification: Notification
         ? notification.timestamp.toDate() 
         : new Date();
     
-           const notificationLink = notification.data?.postId 
+           const notificationLink = notification.data?.chatId
+             ? `/chats/${notification.data.chatId}`
+             : notification.data?.postId 
              ? `/social#post-${notification.data.postId}`
              : notification.data?.challengeId
              ? `/challenges/${notification.data.challengeId}`

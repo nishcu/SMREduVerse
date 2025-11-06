@@ -5,11 +5,14 @@ import { useDoc } from '@/firebase';
 import { db } from '@/lib/firebase';
 import type { Chat } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChatWindow } from '@/components/chat/chat-window';
+import { EnhancedChatWindow } from '@/components/chat/enhanced-chat-window';
 import { useAuth } from '@/hooks/use-auth';
 import { notFound, useParams } from 'next/navigation';
 import { doc, DocumentReference } from 'firebase/firestore';
 import { Card } from '@/components/ui/card';
+import { Circle } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getInitials } from '@/lib/utils';
 
 export default function ChatPage() {
   const params = useParams();
@@ -62,15 +65,27 @@ export default function ChatPage() {
     notFound();
   }
 
+  const otherParticipant = useMemo(() => {
+    if (chat.type === 'group') return null;
+    return chat.participantDetails
+      ? Object.values(chat.participantDetails).find((p) => p.uid !== user.id)
+      : null;
+  }, [chat, user]);
+
   const chatName = useMemo(() => {
     if (chat.type === 'group') {
       return chat.name || `Group Chat (${chat.participants.length})`;
     }
-    const otherParticipant = chat.participantDetails
-      ? Object.values(chat.participantDetails).find((p) => p.uid !== user.id)
-      : null;
     return otherParticipant?.name || 'Private Chat';
-  }, [chat, user]);
+  }, [chat, otherParticipant]);
+
+  // Get online status for private chats
+  const presenceRef = useMemo(
+    () => otherParticipant?.uid ? (doc(db, 'presence', otherParticipant.uid) as DocumentReference<any>) : null,
+    [otherParticipant?.uid]
+  );
+  const { data: presence } = useDoc<any>(presenceRef);
+  const isOnline = presence?.status === 'online';
 
   const chatDescription = useMemo(() => {
     if (chat.type === 'group') {
@@ -78,32 +93,40 @@ export default function ChatPage() {
         chat.description || `Group chat with ${chat.participants.length} members`
       );
     }
-    return `A conversation with ${chatName}${chat.lastMessage ? ` · Last: ${chat.lastMessage.content.slice(0, 30)}...` : ''}`;
-  }, [chat, chatName]);
+    const statusText = isOnline ? 'Online' : presence?.lastSeen 
+      ? `Last seen ${formatDistanceToNow(presence.lastSeen.toDate(), { addSuffix: true })}`
+      : 'Offline';
+    return statusText;
+  }, [chat, isOnline, presence]);
 
   return (
     <Card className="h-full flex flex-col">
-      <div className="p-4 border-b flex items-center gap-3">
-        {chat.type === 'group' && chat.photoUrl ? (
-          <img src={chat.photoUrl} alt="Group avatar" className="w-10 h-10 rounded-full" />
-        ) : (
-          chat.type === 'private' &&
-          chat.participantDetails &&
-          Object.values(chat.participantDetails).find((p) => p.uid !== user.id)?.avatarUrl && (
-            <img
-              src={Object.values(chat.participantDetails).find((p) => p.uid !== user.id)!.avatarUrl}
-              alt="Participant avatar"
-              className="w-10 h-10 rounded-full"
-            />
-          )
-        )}
-        <div>
-          <h1 className="font-semibold text-lg">{chatName}</h1>
-          <p className="text-sm text-muted-foreground">{chatDescription}</p>
+      <div className="p-4 border-b flex items-center gap-3 bg-background">
+        <div className="relative">
+          {chat.type === 'group' && chat.photoUrl ? (
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={chat.photoUrl} alt="Group avatar" />
+              <AvatarFallback>{getInitials(chat.name || 'Group')}</AvatarFallback>
+            </Avatar>
+          ) : (
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={otherParticipant?.avatarUrl} alt={otherParticipant?.name} />
+              <AvatarFallback>{getInitials(otherParticipant?.name || '?')}</AvatarFallback>
+            </Avatar>
+          )}
+          {chat.type === 'private' && isOnline && (
+            <div className="absolute bottom-0 right-0">
+              <Circle className="h-3 w-3 fill-green-500 text-green-500 border-2 border-background rounded-full" />
+            </div>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="font-semibold text-lg truncate">{chatName}</h1>
+          <p className="text-sm text-muted-foreground truncate">{chatDescription}</p>
         </div>
       </div>
       <div className="flex-grow">
-        <ChatWindow chatId={chat.id} chat={chat} />
+        <EnhancedChatWindow chatId={chat.id} chat={chat} />
       </div>
     </Card>
   );
