@@ -5,10 +5,24 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { Heart, Move, Timer } from 'lucide-react';
 
-const symbols = ['⚛️', '🚀', '⭐', '💡', '🌍', '🔬', '🧬', '📚'];
+const symbols = ['⚛️', '🚀', '⭐', '💡', '🌍', '🔬', '🧬', '📚', '🎯', '🎨', '🎭', '🎪', '🎬', '🎤', '🎧', '🎮'];
 const createShuffledDeck = () => {
-    const duplicatedSymbols = [...symbols, ...symbols];
-    return duplicatedSymbols.sort(() => Math.random() - 0.5).map((symbol, index) => ({ id: index, symbol, isFlipped: false, isMatched: false }));
+    // Use timestamp + random for better randomization
+    const seed = Date.now() + Math.random();
+    const selectedSymbols = [...symbols].sort(() => seed - Math.random()).slice(0, 8);
+    const duplicatedSymbols = [...selectedSymbols, ...selectedSymbols];
+    // Fisher-Yates shuffle with better randomization
+    const shuffled = [...duplicatedSymbols];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor((seed + i) * Math.random()) % (i + 1);
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled.map((symbol, index) => ({ 
+        id: `${symbol}-${index}-${Date.now()}`, 
+        symbol, 
+        isFlipped: false, 
+        isMatched: false 
+    }));
 };
 
 export function MemoryMatchGame() {

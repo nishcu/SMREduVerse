@@ -4,12 +4,16 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 // Simple Sudoku generator with proper puzzle generation
-const generatePuzzle = (): Array<Array<{ value: number | null; isGiven: boolean; isCorrect: boolean; solution: number }>> => {
+const generatePuzzle = (seed?: number): Array<Array<{ value: number | null; isGiven: boolean; isCorrect: boolean; solution: number }>> => {
     try {
         // Use dynamic import for client-side
         if (typeof window !== 'undefined') {
             const sudoku = require('sudoku');
-            const puzzleString = sudoku.generate('easy');
+            // Use different difficulty levels for variety
+            const difficulties = ['easy', 'medium', 'hard'];
+            const diffIndex = seed ? (seed % difficulties.length) : Math.floor(Math.random() * difficulties.length);
+            const difficulty = difficulties[diffIndex] as 'easy' | 'medium' | 'hard';
+            const puzzleString = sudoku.generate(difficulty);
             const puzzleGrid = sudoku.board_string_to_grid(puzzleString);
             const solutionGrid = sudoku.board_string_to_grid(sudoku.solve(puzzleString));
             
@@ -68,9 +72,17 @@ const generatePuzzle = (): Array<Array<{ value: number | null; isGiven: boolean;
 };
 
 export function SudokuGame() {
-    const [board, setBoard] = useState(generatePuzzle());
+    const [gameSeed] = useState(() => Date.now()); // Generate seed once per game instance
+    const [board, setBoard] = useState(() => generatePuzzle(gameSeed));
     const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
     const [isFinished, setIsFinished] = useState(false);
+    
+    // Reset game when component remounts (new key)
+    useEffect(() => {
+        setBoard(generatePuzzle(Date.now()));
+        setSelectedCell(null);
+        setIsFinished(false);
+    }, []);
     
     const handleCellClick = (row: number, col: number) => {
         if (!board[row][col].isGiven) {
@@ -101,7 +113,7 @@ export function SudokuGame() {
     }
     
     const startNewGame = () => {
-        setBoard(generatePuzzle());
+        setBoard(generatePuzzle(Date.now()));
         setSelectedCell(null);
         setIsFinished(false);
     }

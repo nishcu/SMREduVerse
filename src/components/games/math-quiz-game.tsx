@@ -9,11 +9,12 @@ import { Share2 } from 'lucide-react';
 
 type Operation = '+' | '-' | '*';
 
-function generateQuestion() {
+function generateQuestion(seed: number = Date.now()) {
     const operations: Operation[] = ['+', '-', '*'];
-    const op = operations[Math.floor(Math.random() * operations.length)];
-    let num1 = Math.floor(Math.random() * 10) + 1;
-    let num2 = Math.floor(Math.random() * 10) + 1;
+    // Use seed for better randomization
+    const op = operations[Math.floor((seed % 1000) / 333.33) % operations.length];
+    let num1 = (Math.floor(seed * 7) % 10) + 1;
+    let num2 = (Math.floor(seed * 11) % 10) + 1;
     let answer: number;
 
     if (op === '-') {
@@ -53,8 +54,13 @@ export const MathQuizGame = ({ onComplete }: { onComplete: () => void }) => {
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [timeLeft, setTimeLeft] = useState(10);
     const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+    const [gameSeed] = useState(() => Date.now()); // Generate seed once per game instance
 
-    const questions = useMemo(() => Array.from({ length: 10 }, generateQuestion), [currentQuestionIndex === 0 && score === 0]);
+    // Generate fresh questions each time game starts
+    const questions = useMemo(() => 
+        Array.from({ length: 10 }, (_, i) => generateQuestion(gameSeed + i * 1000)), 
+        [gameSeed]
+    );
     const totalQuestions = questions.length;
     const currentQuestion = questions[currentQuestionIndex];
     const progress = ((currentQuestionIndex) / totalQuestions) * 100;

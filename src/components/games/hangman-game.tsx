@@ -3,8 +3,20 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 
-const words = ['react', 'javascript', 'tailwind', 'nextjs', 'firebase', 'genkit'];
+const words = [
+    'react', 'javascript', 'tailwind', 'nextjs', 'firebase', 'genkit',
+    'typescript', 'python', 'nodejs', 'mongodb', 'postgres', 'graphql',
+    'docker', 'kubernetes', 'aws', 'azure', 'golang', 'rust', 'swift',
+    'kotlin', 'flutter', 'angular', 'vuejs', 'svelte', 'express', 'django'
+];
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
+
+const getRandomWord = () => {
+    // Use timestamp for better randomization
+    const seed = Date.now() % words.length;
+    const randomIndex = (seed + Math.floor(Math.random() * words.length)) % words.length;
+    return words[randomIndex];
+};
 
 export function HangmanGame() {
     const [word, setWord] = useState('');
@@ -26,13 +38,14 @@ export function HangmanGame() {
     };
     
     const startNewGame = () => {
-        setWord(words[Math.floor(Math.random() * words.length)]);
+        setWord(getRandomWord());
         setGuessedLetters([]);
         setMistakes(0);
     }
 
     useEffect(() => {
         startNewGame();
+        // Reset when component mounts (which happens with new key)
     }, []);
 
     return (

@@ -19,55 +19,59 @@ import { WordShuffleGame } from '@/components/games/word-shuffle-game';
 import { SudokuGame } from '@/components/games/sudoku-game';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 
+type GameComponent = React.ComponentType<any>;
+
 const games = [
   {
     id: 'memory-match',
     title: 'Memory Match',
     description: 'Test your memory by matching pairs of cards.',
     icon: <Brain />,
-    component: <MemoryMatchGame />,
+    component: MemoryMatchGame as GameComponent,
   },
   {
     id: 'focus-taps',
     title: 'Focus Taps',
     description: 'Click the target as fast as you can to improve focus.',
     icon: <Target />,
-    component: <FocusTapsGame onComplete={() => {}} />,
+    component: FocusTapsGame as GameComponent,
+    props: { onComplete: () => {} },
   },
   {
     id: 'word-shuffle',
     title: 'Word Shuffle',
     description: 'Unscramble the letters to find the hidden word.',
     icon: <Shuffle />,
-    component: <WordShuffleGame />,
+    component: WordShuffleGame as GameComponent,
   },
   {
     id: 'math-quiz',
     title: 'Math Quiz',
     description: 'Solve math problems against the clock.',
     icon: <Puzzle />,
-    component: <MathQuizGame onComplete={() => {}} />,
+    component: MathQuizGame as GameComponent,
+    props: { onComplete: () => {} },
   },
   {
     id: 'typing-speed',
     title: 'Typing Speed Test',
     description: 'Test and improve your typing speed and accuracy.',
     icon: <Type />,
-    component: <TypingSpeedGame />,
+    component: TypingSpeedGame as GameComponent,
   },
    {
     id: 'sudoku',
     title: 'Sudoku',
     description: 'A classic logic puzzle to challenge your brain.',
     icon: <Grid />,
-    component: <SudokuGame />,
+    component: SudokuGame as GameComponent,
   },
   {
     id: 'hangman',
     title: 'Hangman',
     description: 'Guess the word before you run out of chances.',
     icon: <Drama />,
-    component: <HangmanGame />,
+    component: HangmanGame as GameComponent,
   },
 ];
 
@@ -75,6 +79,7 @@ export type Game = (typeof games)[0];
 
 export default function GamesPage() {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const [gameKey, setGameKey] = useState(0); // Key to force remount
 
   return (
     <>
@@ -92,20 +97,31 @@ export default function GamesPage() {
         </div>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {games.map((game) => (
-            <GameCard key={game.id} game={game} onPlay={() => setSelectedGame(game)} />
+            <GameCard key={game.id} game={game} onPlay={() => {
+              setSelectedGame(game);
+              setGameKey(prev => prev + 1); // Force remount with new key
+            }} />
           ))}
         </div>
       </div>
-      <Sheet open={!!selectedGame} onOpenChange={(open) => !open && setSelectedGame(null)}>
+      <Sheet open={!!selectedGame} onOpenChange={(open) => {
+        if (!open) {
+          setSelectedGame(null);
+          setGameKey(prev => prev + 1); // Reset key when closing
+        }
+      }}>
         <SheetContent className="w-full sm:max-w-2xl lg:max-w-4xl">
           {selectedGame && (
-            <ErrorBoundary onReset={() => setSelectedGame(null)}>
+            <ErrorBoundary onReset={() => {
+              setSelectedGame(null);
+              setGameKey(prev => prev + 1);
+            }}>
               <SheetHeader>
                 <SheetTitle className="text-2xl font-headline">{selectedGame.title}</SheetTitle>
                 <SheetDescription>{selectedGame.description}</SheetDescription>
               </SheetHeader>
               <div className="mt-4 h-[calc(100vh-8rem)] rounded-lg bg-secondary p-4">
-                {selectedGame.component}
+                <selectedGame.component key={`${selectedGame.id}-${gameKey}`} {...(selectedGame.props || {})} />
               </div>
             </ErrorBoundary>
           )}

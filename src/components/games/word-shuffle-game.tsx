@@ -4,7 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const words = ['react', 'nextjs', 'tailwind', 'firebase', 'genkit', 'typescript', 'component'];
+const words = [
+    'react', 'nextjs', 'tailwind', 'firebase', 'genkit', 'typescript', 'component',
+    'javascript', 'python', 'nodejs', 'mongodb', 'postgres', 'graphql', 'docker',
+    'kubernetes', 'express', 'angular', 'vuejs', 'svelte', 'django', 'flask',
+    'algorithm', 'function', 'variable', 'database', 'server', 'client', 'api'
+];
+
+const getRandomWord = () => {
+    const seed = Date.now() % words.length;
+    const randomIndex = (seed + Math.floor(Math.random() * words.length)) % words.length;
+    return words[randomIndex];
+};
 
 const shuffleWord = (word: string) => {
     const a = word.split('');
@@ -27,7 +38,7 @@ export function WordShuffleGame() {
     const [score, setScore] = useState(0);
 
     const startNewGame = () => {
-        const newWord = words[Math.floor(Math.random() * words.length)];
+        const newWord = getRandomWord();
         setWord(newWord);
         setShuffledWord(shuffleWord(newWord));
         setGuess('');
@@ -36,6 +47,7 @@ export function WordShuffleGame() {
     
     useEffect(() => {
         startNewGame();
+        // Reset when component mounts (which happens with new key)
     }, []);
 
     const handleGuess = (e: React.FormEvent) => {

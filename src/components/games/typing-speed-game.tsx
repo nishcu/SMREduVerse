@@ -8,7 +8,16 @@ const paragraphs = [
     "The quick brown fox jumps over the lazy dog. This sentence contains every letter of the alphabet. Learning to type quickly and accurately is a valuable skill in today's digital world.",
     "Technology has revolutionized the way we live and work. From smartphones to artificial intelligence, innovation continues to shape our future. The possibilities are endless.",
     "The universe is vast and full of wonders. Stars, planets, and galaxies stretch across cosmic distances. Exploring space helps us understand our place in the cosmos.",
+    "Programming is both an art and a science. It requires logical thinking, creativity, and attention to detail. Every line of code tells a story of problem-solving.",
+    "Mathematics is the language of the universe. From counting apples to understanding quantum mechanics, numbers help us describe the world around us.",
+    "Education opens doors to opportunities. Learning new skills and knowledge empowers us to achieve our dreams and make a positive impact on the world.",
 ];
+
+const getRandomParagraph = () => {
+    const seed = Date.now() % paragraphs.length;
+    const randomIndex = (seed + Math.floor(Math.random() * paragraphs.length)) % paragraphs.length;
+    return paragraphs[randomIndex];
+};
 
 export function TypingSpeedGame() {
     const [text, setText] = useState('');
@@ -19,7 +28,7 @@ export function TypingSpeedGame() {
     const inputRef = useRef<HTMLInputElement>(null);
 
     const resetGame = () => {
-        setText(paragraphs[Math.floor(Math.random() * paragraphs.length)]);
+        setText(getRandomParagraph());
         setTypedText('');
         setTimeLeft(60);
         setGameStarted(false);
@@ -28,6 +37,7 @@ export function TypingSpeedGame() {
     
     useEffect(() => {
         resetGame();
+        // Reset when component mounts (which happens with new key)
     }, []);
 
     useEffect(() => {
