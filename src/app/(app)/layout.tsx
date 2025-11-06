@@ -99,7 +99,7 @@ const navItems = {
 
 const footerNavItems = [
     { href: '/support', icon: LifeBuoy, label: 'Support' },
-    { href: '/settings', icon: Settings, label: 'Settings' },
+    { href: '/settings', icon: Settings, label: 'Parental Controls' },
 ];
 
 const adminNavItems = [

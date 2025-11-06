@@ -234,8 +234,8 @@ export default function SettingsPage() {
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="font-headline text-3xl font-semibold md:text-4xl">Settings</h1>
-                <p className="text-muted-foreground">Manage your account and platform settings.</p>
+                <h1 className="font-headline text-3xl font-semibold md:text-4xl">Parental Controls</h1>
+                <p className="text-muted-foreground">Manage parental controls and account restrictions.</p>
             </div>
             
             <motion.div 
