@@ -2,16 +2,26 @@
 'use client';
 import { useParams } from 'next/navigation';
 import { useDoc } from '@/firebase';
-import { doc, DocumentReference } from 'firebase/firestore';
+import { doc, DocumentReference, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { User } from '@/lib/types';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { PostsFeed } from '@/app/(app)/social/posts-feed';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Award, Brain, Bike, School as SchoolIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+
+// Helper function to generate a random referral code
+const generateReferralCode = (length: number) => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
 
 function ProfilePageSkeleton() {
   return (
@@ -99,23 +109,73 @@ function ProfileDetails({ user }: { user: User }) {
 export default function ProfilePage() {
   const params = useParams();
   const uid = params.uid as string;
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, firebaseUser } = useAuth();
+  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
 
   const userRef = useMemo(() => (uid ? (doc(db, 'users', uid, 'profile', uid) as DocumentReference<User>) : null), [uid]);
   const { data: profile, loading } = useDoc<User>(userRef);
 
-  if (loading) {
+  // Auto-create profile if it doesn't exist and user is viewing their own profile
+  useEffect(() => {
+    if (!loading && !profile && uid === currentUser?.id && firebaseUser && !isCreatingProfile) {
+      setIsCreatingProfile(true);
+      const createProfile = async () => {
+        try {
+          const isSuperAdmin = firebaseUser.uid === 'hJ1yy9A2WDZWPM9RPYquq8ibCp22';
+          
+          const newUser: Omit<User, 'id'> = {
+            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'New User',
+            username: firebaseUser.email?.split('@')[0] || `user${Date.now()}`,
+            email: firebaseUser.email || '',
+            avatarUrl: firebaseUser.photoURL || `https://avatar.vercel.sh/${firebaseUser.uid}`,
+            bio: 'Welcome to the platform! Update your bio.',
+            isSuperAdmin: isSuperAdmin,
+            followersCount: 0,
+            followingCount: 0,
+            createdAt: new Date().toISOString(),
+            referralCode: generateReferralCode(8),
+            settings: {
+              restrictSpending: false,
+              restrictChat: false,
+              restrictTalentHub: false,
+            },
+            wallet: {
+              knowledgeCoins: 100,
+            },
+            knowledgePoints: 100,
+            grade: 'Not specified',
+            educationHistory: [],
+            syllabus: 'Not specified',
+            medium: 'Not specified',
+            interests: [],
+            sports: [],
+          };
+          
+          await setDoc(userRef!, { ...newUser, createdAt: serverTimestamp() });
+          // Profile will be loaded by useDoc hook after creation
+        } catch (error) {
+          console.error("Error creating profile:", error);
+        } finally {
+          setIsCreatingProfile(false);
+        }
+      };
+      
+      createProfile();
+    }
+  }, [loading, profile, uid, currentUser?.id, firebaseUser, userRef, isCreatingProfile]);
+
+  if (loading || isCreatingProfile) {
     return <ProfilePageSkeleton />;
   }
 
-  // If profile doesn't exist, show a helpful message
+  // If profile doesn't exist and it's not the current user's profile
   if (!profile) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <p className="text-lg text-muted-foreground">Profile not found</p>
         <p className="text-sm text-muted-foreground">
           {uid === currentUser?.id 
-            ? "Your profile hasn't been created yet. Please refresh the page or contact support."
+            ? "Creating your profile..."
             : "This user profile doesn't exist."}
         </p>
       </div>
