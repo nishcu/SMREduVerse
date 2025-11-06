@@ -268,14 +268,16 @@ export async function createReviewAction(contentId: string, rating: number, comm
     }
 
     // Check if already reviewed
-    const existingReviewRef = db.collection('content-reviews')
+    // Note: Using where().where() requires an index, so we fetch all reviews for this content and filter in memory
+    const reviewsSnapshot = await db.collection('content-reviews')
       .where('contentId', '==', contentId)
-      .where('reviewer.uid', '==', uid)
-      .limit(1)
       .get();
 
-    const existingReview = await existingReviewRef;
-    if (!existingReview.empty) {
+    const existingReview = reviewsSnapshot.docs.find((doc: any) => {
+      const reviewData = doc.data();
+      return reviewData.reviewer?.uid === uid;
+    });
+    if (existingReview) {
       return {
         success: false,
         error: 'You have already reviewed this content.',
