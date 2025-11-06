@@ -71,6 +71,7 @@ const navItems = {
   'Learning': [
     { href: '/my-classes', icon: School, label: 'My Classes' },
     { href: '/courses', icon: BookOpen, label: 'Courses' },
+    { href: '/tutors/my-courses', icon: BookOpen, label: 'My Courses (Tutor)' },
     { href: '/ai-learning', icon: Sparkles, label: 'AI Learning Feed' },
     { href: '/subjects', icon: Library, label: 'Subjects' },
     { href: '/tutors', icon: UserIcon, label: 'Tutors' },

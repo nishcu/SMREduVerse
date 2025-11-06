@@ -10,6 +10,8 @@ const LessonSchema = z.object({
   description: z.string().min(1, 'Description cannot be empty.').max(500, 'Description must be 500 characters or less.'),
   contentType: z.enum(['video', 'text', 'pdf', 'presentation']),
   contentUrl: z.string().url('Please enter a valid URL for the content.').optional().or(z.literal('')),
+  content: z.string().optional(), // For rich text content
+  uploadedFileUrl: z.string().optional(), // For uploaded files
   idToken: z.string().min(1, 'Authentication token is required.'),
   courseId: z.string().min(1, 'Course ID is required.'),
   chapterId: z.string().min(1, 'Chapter ID is required.'),
