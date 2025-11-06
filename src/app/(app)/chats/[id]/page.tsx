@@ -117,15 +117,13 @@ export default function ChatPage() {
   const isOnline = presence?.status === 'online' && !presenceError;
 
   // Use state to prevent hydration mismatch with date formatting
-  const [chatDescription, setChatDescription] = useState<string>(() => {
-    // Initial value based on chat type (no date formatting to avoid hydration mismatch)
-    if (chat.type === 'group') {
-      return chat.description || `Group chat with ${chat.participants.length} members`;
-    }
-    return 'Offline'; // Default for private chats
-  });
+  // Initialize with empty string to avoid using chat data during initial render
+  const [chatDescription, setChatDescription] = useState<string>('');
 
+  // Only update description after mount and when data is available
   useEffect(() => {
+    if (!mounted || !chat) return;
+    
     if (chat.type === 'group') {
       setChatDescription(chat.description || `Group chat with ${chat.participants.length} members`);
       return;
@@ -139,7 +137,7 @@ export default function ChatPage() {
       ? `Last seen ${formatDistanceToNow(presence.lastSeen.toDate(), { addSuffix: true })}`
       : 'Offline';
     setChatDescription(statusText);
-  }, [chat, isOnline, presence, presenceError]);
+  }, [mounted, chat, isOnline, presence, presenceError]);
 
   return (
     <Card className="h-full flex flex-col">
