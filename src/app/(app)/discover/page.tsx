@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toggleFollowAction, checkFollowingAction } from '@/app/(app)/social/actions';
 import { getOrCreateChatAction } from '@/app/(app)/chats/actions';
 import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 function UserCard({ user, isFollowing, onFollowToggle, onMessage, isLoading, isStartingChat }: { 
   user: User; 
@@ -125,6 +126,7 @@ function DiscoverSkeleton() {
 export default function DiscoverPage() {
   const { user, firebaseUser } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [followingStatus, setFollowingStatus] = useState<Record<string, boolean>>({});
@@ -274,8 +276,11 @@ export default function DiscoverPage() {
     try {
       const result = await getOrCreateChatAction(user.id, targetUserId);
       if (result.success && result.chatId) {
-        // Use window.location.href to avoid hydration issues
-        window.location.href = `/chats/${result.chatId}`;
+        // Small delay to ensure chat is fully created before navigation
+        await new Promise(resolve => setTimeout(resolve, 300));
+        // Use router.push with replace to avoid hydration issues
+        router.push(`/chats/${result.chatId}`);
+        // Don't reset loading state here - let the navigation handle it
       } else {
         setChatLoading(prev => ({ ...prev, [targetUserId]: false }));
         toast({

@@ -57,6 +57,14 @@ export default function ChatPage() {
 
   if (error || !chat) {
     console.warn('Chat fetch failed:', { error: error?.message, chatId });
+    // If chat doesn't exist yet, wait a bit and retry (for newly created chats)
+    if (!chat && !error) {
+      return (
+        <Card className="h-full flex flex-col items-center justify-center p-4">
+          <p className="text-muted-foreground">Loading chat...</p>
+        </Card>
+      );
+    }
     return (
       <Card className="h-full flex flex-col items-center justify-center p-4 text-destructive">
         <p>Unable to load chat. Please check your permissions or try again later.</p>
@@ -64,9 +72,17 @@ export default function ChatPage() {
     );
   }
 
-  if (!user || !chat.participants.includes(user.id)) {
+  if (!user) {
+    return (
+      <Card className="h-full flex flex-col items-center justify-center p-4">
+        <p className="text-muted-foreground">Please sign in to view this chat.</p>
+      </Card>
+    );
+  }
+
+  if (!chat.participants.includes(user.id)) {
     console.warn(
-      `Access denied for chat ${chatId}: User ${user?.id || 'unauthenticated'} not in participants`,
+      `Access denied for chat ${chatId}: User ${user.id} not in participants`,
       { participants: chat.participants }
     );
     notFound();
