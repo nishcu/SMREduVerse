@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from '@/components/ui/popover';
 import { searchAction } from '@/app/(app)/actions';
-import { Loader2, Search, Users, BookOpen, MessageSquare } from 'lucide-react';
+import { Loader2, Search, Users, BookOpen, MessageSquare, Trophy, ShoppingBag, School, Target, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { getInitials } from '@/lib/utils';
@@ -14,6 +14,11 @@ type SearchResults = {
     users: any[];
     courses: any[];
     posts: any[];
+    challenges: any[];
+    contests: any[];
+    marketplace: any[];
+    partners: any[];
+    studyRooms: any[];
 };
 
 export function GlobalSearch() {
@@ -57,7 +62,16 @@ export function GlobalSearch() {
         debouncedSearch(query);
     }, [query, debouncedSearch]);
     
-    const hasResults = results && (results.users.length > 0 || results.courses.length > 0 || results.posts.length > 0);
+    const hasResults = results && (
+        results.users.length > 0 || 
+        results.courses.length > 0 || 
+        results.posts.length > 0 ||
+        results.challenges.length > 0 ||
+        results.contests.length > 0 ||
+        results.marketplace.length > 0 ||
+        results.partners.length > 0 ||
+        results.studyRooms.length > 0
+    );
 
     return (
         <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -73,7 +87,7 @@ export function GlobalSearch() {
                                 setIsOpen(true);
                             }
                         }}
-                        placeholder="Search for courses, users, posts..."
+                        placeholder="Search everything: users, courses, posts, challenges..."
                         className="pl-10"
                     />
                     {loading && (
@@ -122,8 +136,73 @@ export function GlobalSearch() {
                                    {results.posts.map(post => (
                                        <motion.div key={post.id} whileHover={{ scale: 1.03, x: 5 }}>
                                            <Link href={`/social`} className="block rounded-md p-2 hover:bg-secondary">
-                                                <p className="text-sm font-medium truncate">{post.content}</p>
-                                                <p className="text-xs text-muted-foreground">by {post.author.name}</p>
+                                                <p className="text-sm font-medium truncate">{post.content || post.title}</p>
+                                                <p className="text-xs text-muted-foreground">by {post.author?.name || 'Unknown'}</p>
+                                           </Link>
+                                       </motion.div>
+                                   ))}
+                               </div>
+                           )}
+                           {results.challenges.length > 0 && (
+                               <div>
+                                   <h4 className="px-2 py-1 text-xs font-semibold text-muted-foreground flex items-center gap-2"><Target className="h-4 w-4" /> Challenges</h4>
+                                   {results.challenges.map(challenge => (
+                                       <motion.div key={challenge.id} whileHover={{ scale: 1.03, x: 5 }}>
+                                           <Link href={`/challenges`} className="block rounded-md p-2 hover:bg-secondary">
+                                                <p className="text-sm font-medium truncate">{challenge.title}</p>
+                                                <p className="text-xs text-muted-foreground truncate">{challenge.description}</p>
+                                           </Link>
+                                       </motion.div>
+                                   ))}
+                               </div>
+                           )}
+                           {results.contests.length > 0 && (
+                               <div>
+                                   <h4 className="px-2 py-1 text-xs font-semibold text-muted-foreground flex items-center gap-2"><Trophy className="h-4 w-4" /> Contests</h4>
+                                   {results.contests.map(contest => (
+                                       <motion.div key={contest.id} whileHover={{ scale: 1.03, x: 5 }}>
+                                           <Link href={`/contests`} className="block rounded-md p-2 hover:bg-secondary">
+                                                <p className="text-sm font-medium truncate">{contest.title}</p>
+                                                <p className="text-xs text-muted-foreground truncate">{contest.description}</p>
+                                           </Link>
+                                       </motion.div>
+                                   ))}
+                               </div>
+                           )}
+                           {results.marketplace.length > 0 && (
+                               <div>
+                                   <h4 className="px-2 py-1 text-xs font-semibold text-muted-foreground flex items-center gap-2"><ShoppingBag className="h-4 w-4" /> Marketplace</h4>
+                                   {results.marketplace.map(item => (
+                                       <motion.div key={item.id} whileHover={{ scale: 1.03, x: 5 }}>
+                                           <Link href={`/marketplace`} className="block rounded-md p-2 hover:bg-secondary">
+                                                <p className="text-sm font-medium truncate">{item.title}</p>
+                                                <p className="text-xs text-muted-foreground">{item.price} coins</p>
+                                           </Link>
+                                       </motion.div>
+                                   ))}
+                               </div>
+                           )}
+                           {results.partners.length > 0 && (
+                               <div>
+                                   <h4 className="px-2 py-1 text-xs font-semibold text-muted-foreground flex items-center gap-2"><School className="h-4 w-4" /> Partners</h4>
+                                   {results.partners.map(partner => (
+                                       <motion.div key={partner.id} whileHover={{ scale: 1.03, x: 5 }}>
+                                           <Link href={`/partners/${partner.id}`} className="block rounded-md p-2 hover:bg-secondary">
+                                                <p className="text-sm font-medium truncate">{partner.name}</p>
+                                                <p className="text-xs text-muted-foreground truncate">{partner.type} • {partner.location}</p>
+                                           </Link>
+                                       </motion.div>
+                                   ))}
+                               </div>
+                           )}
+                           {results.studyRooms.length > 0 && (
+                               <div>
+                                   <h4 className="px-2 py-1 text-xs font-semibold text-muted-foreground flex items-center gap-2"><Zap className="h-4 w-4" /> Study Rooms</h4>
+                                   {results.studyRooms.map(room => (
+                                       <motion.div key={room.id} whileHover={{ scale: 1.03, x: 5 }}>
+                                           <Link href={`/study-rooms`} className="block rounded-md p-2 hover:bg-secondary">
+                                                <p className="text-sm font-medium truncate">{room.name}</p>
+                                                <p className="text-xs text-muted-foreground truncate">{room.subject || room.description}</p>
                                            </Link>
                                        </motion.div>
                                    ))}

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { User } from '@/lib/types';
@@ -11,13 +11,13 @@ import { getOrCreateChatAction } from '@/app/(app)/chats/actions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User as UserIcon, MessageSquare, Edit } from 'lucide-react';
+import { User as UserIcon, MessageSquare, Edit, UserCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 import { EditProfileDialog } from './edit-profile-dialog';
 
 export function ProfileHeader({ user: profileUser }: { user: User }) {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, firebaseUser } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
@@ -29,8 +29,66 @@ export function ProfileHeader({ user: profileUser }: { user: User }) {
   const currentTab = pathParts.length > 3 && !['followers', 'following'].includes(pathParts[3]) ? pathParts[3] : 'posts';
 
 
-  const handleFollow = () => {
-    toast({ title: 'Followed!', description: `You are now following ${profileUser.name}.` });
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowingAction, setIsFollowingAction] = useState(false);
+
+  useEffect(() => {
+    const checkFollowing = async () => {
+      if (!currentUser || !firebaseUser || isOwnProfile) return;
+      
+      try {
+        const idToken = await firebaseUser.getIdToken();
+        const { checkFollowingAction } = await import('@/app/(app)/social/actions');
+        const result = await checkFollowingAction(profileUser.id, idToken);
+        if (result.success) {
+          setIsFollowing(result.following);
+        }
+      } catch (error) {
+        console.error('Error checking follow status:', error);
+      }
+    };
+
+    checkFollowing();
+  }, [currentUser, firebaseUser, profileUser.id, isOwnProfile]);
+
+  const handleFollow = async () => {
+    if (!currentUser || !firebaseUser || isFollowingAction) return;
+    
+    setIsFollowingAction(true);
+    const wasFollowing = isFollowing;
+    setIsFollowing(!wasFollowing);
+
+    try {
+      const idToken = await firebaseUser.getIdToken();
+      const { toggleFollowAction } = await import('@/app/(app)/social/actions');
+      const result = await toggleFollowAction(profileUser.id, idToken);
+
+      if (result.success) {
+        setIsFollowing(result.following);
+        toast({ 
+          title: result.following ? 'Followed!' : 'Unfollowed',
+          description: result.following 
+            ? `You are now following ${profileUser.name}.`
+            : `You unfollowed ${profileUser.name}.`,
+        });
+      } else {
+        setIsFollowing(wasFollowing);
+        toast({ 
+          variant: 'destructive',
+          title: 'Error', 
+          description: result.error || 'Failed to follow user.' 
+        });
+      }
+    } catch (error: any) {
+      setIsFollowing(wasFollowing);
+      toast({ 
+        variant: 'destructive',
+        title: 'Error', 
+        description: error.message || 'Failed to follow user.' 
+      });
+    } finally {
+      setIsFollowingAction(false);
+    }
   };
 
   const handleStartChat = () => {
@@ -72,9 +130,23 @@ export function ProfileHeader({ user: profileUser }: { user: User }) {
               ) : (
                 <>
                   <motion.div whileHover={{ scale: 1.05 }}>
-                    <Button onClick={handleFollow}>
-                        <UserIcon className="mr-2" />
-                        Follow
+                    <Button onClick={handleFollow} disabled={isFollowingAction}>
+                        {isFollowingAction ? (
+                          <>
+                            <UserIcon className="mr-2 animate-pulse" />
+                            {isFollowing ? 'Unfollowing...' : 'Following...'}
+                          </>
+                        ) : isFollowing ? (
+                          <>
+                            <UserCheck className="mr-2" />
+                            Following
+                          </>
+                        ) : (
+                          <>
+                            <UserIcon className="mr-2" />
+                            Follow
+                          </>
+                        )}
                     </Button>
                   </motion.div>
                   <motion.div whileHover={{ scale: 1.05 }}>
