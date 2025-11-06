@@ -255,7 +255,7 @@ export interface CoinBundle {
 
 export interface Notification {
   id: string;
-  type: 'new_follower' | 'course_enrollment' | 'contest_win' | 'post_like' | 'post_comment';
+  type: 'new_follower' | 'course_enrollment' | 'contest_win' | 'post_like' | 'post_comment' | 'challenge_invite' | 'challenge_progress';
   actor: {
     name: string;
     avatarUrl: string;
@@ -265,9 +265,113 @@ export interface Notification {
     courseName?: string;
     contestName?: string;
     postId?: string;
+    challengeId?: string;
   };
   timestamp: Date | any; // Can be Firestore Timestamp
   read: boolean;
+}
+
+// Feature 1: Social Learning Challenges
+export interface LearningChallenge {
+  id: string;
+  title: string;
+  description: string;
+  creator: {
+    uid: string;
+    name: string;
+    avatarUrl: string;
+  };
+  type: 'course_completion' | 'subject_mastery' | 'daily_goal' | 'time_based' | 'custom';
+  target: {
+    courseId?: string;
+    subject?: string;
+    goal?: string;
+    duration?: number; // days
+  };
+  participants: string[]; // Array of user UIDs
+  participantDetails: {
+    [uid: string]: {
+      name: string;
+      avatarUrl: string;
+      progress: number; // 0-100
+      joinedAt: Timestamp;
+    };
+  };
+  status: 'upcoming' | 'active' | 'completed';
+  startDate: Timestamp;
+  endDate?: Timestamp;
+  rewards: {
+    coins: number;
+    points: number;
+    badge?: string;
+  };
+  leaderboard: Array<{
+    uid: string;
+    name: string;
+    avatarUrl: string;
+    progress: number;
+    rank: number;
+  }>;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+// Feature 2: AI-Powered Recommendations
+export interface LearningRecommendation {
+  courseId?: string;
+  userId?: string; // Study buddy recommendation
+  postId?: string;
+  questionId?: string;
+  type: 'course' | 'study_buddy' | 'content' | 'question';
+  reason: string;
+  score: number; // 0-100 recommendation score
+  socialSignals?: {
+    friendsLearning?: number;
+    trending?: boolean;
+  };
+}
+
+// Feature 3: Knowledge Marketplace
+export interface MarketplaceContent {
+  id: string;
+  title: string;
+  description: string;
+  creator: {
+    uid: string;
+    name: string;
+    avatarUrl: string;
+    verified?: boolean;
+  };
+  type: 'study_notes' | 'video_tutorial' | 'practice_quiz' | 'flashcards' | 'study_guide';
+  subject: string;
+  grade?: string;
+  content: {
+    fileUrl?: string; // For PDFs, videos
+    content?: string; // For text-based content
+    quizData?: any; // For practice quizzes
+  };
+  price: number; // Knowledge Coins (0 = free)
+  sales: number;
+  rating: number;
+  reviewsCount: number;
+  downloads: number;
+  tags: string[];
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  status: 'draft' | 'published' | 'archived';
+}
+
+export interface ContentReview {
+  id: string;
+  contentId: string;
+  reviewer: {
+    uid: string;
+    name: string;
+    avatarUrl: string;
+  };
+  rating: number; // 1-5
+  comment?: string;
+  createdAt: Timestamp;
 }
 
 export interface Partner {

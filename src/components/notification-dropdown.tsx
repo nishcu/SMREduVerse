@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { Bell, UserPlus, Award, Heart, BookOpen, CheckCircle, MessageCircle } from 'lucide-react';
+import { Bell, UserPlus, Award, Heart, BookOpen, CheckCircle, MessageCircle, Target, TrendingUp } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Notification } from '@/lib/types';
 import { formatDistanceToNowStrict, formatDistanceToNow } from 'date-fns';
@@ -26,6 +26,10 @@ const getNotificationIcon = (type: Notification['type']) => {
       return <Heart className="h-6 w-6 text-red-500" />;
     case 'post_comment':
       return <MessageCircle className="h-6 w-6 text-green-500" />;
+    case 'challenge_invite':
+      return <Target className="h-6 w-6 text-orange-500" />;
+    case 'challenge_progress':
+      return <TrendingUp className="h-6 w-6 text-indigo-500" />;
     default:
       return <Bell className="h-6 w-6 text-gray-500" />;
   }
@@ -44,6 +48,10 @@ const getNotificationText = (notification: Notification) => {
             return <>{actor} liked your post.</>;
         case 'post_comment':
             return <>{actor} commented on your post.</>;
+        case 'challenge_invite':
+            return <>{actor} joined your challenge!</>;
+        case 'challenge_progress':
+            return <>{actor} is making progress in a challenge you're both in.</>;
         default:
             return 'New notification';
     }
@@ -203,9 +211,11 @@ function NotificationItem({ notification, onRead }: { notification: Notification
         ? notification.timestamp.toDate() 
         : new Date();
     
-    const notificationLink = notification.data?.postId 
-      ? `/social#post-${notification.data.postId}`
-      : `/profile/${notification.actor.uid}`;
+           const notificationLink = notification.data?.postId 
+             ? `/social#post-${notification.data.postId}`
+             : notification.data?.challengeId
+             ? `/challenges/${notification.data.challengeId}`
+             : `/profile/${notification.actor.uid}`;
     
     return (
         <Link href={notificationLink} className={cn("flex items-start gap-3 p-3 hover:bg-secondary/50 cursor-pointer", !notification.read && "bg-secondary/50")}>

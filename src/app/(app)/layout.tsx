@@ -25,6 +25,8 @@ import {
     MessageSquare,
     Coins,
     Shield,
+    Target,
+    Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -57,12 +59,14 @@ const navItems = {
   'Learning': [
     { href: '/my-classes', icon: School, label: 'My Classes' },
     { href: '/courses', icon: BookOpen, label: 'Courses' },
+    { href: '/ai-learning', icon: Sparkles, label: 'AI Learning Feed' },
     { href: '/subjects', icon: Library, label: 'Subjects' },
     { href: '/tutors', icon: UserIcon, label: 'Tutors' },
     { href: '/study-rooms', icon: Users, label: 'Study Rooms' },
   ],
   'Community': [
     { href: '/social', icon: Users, label: 'Social' },
+    { href: '/challenges', icon: Target, label: 'Challenges' },
     { href: '/chats', icon: MessageSquare, label: 'Chats' },
     { href: '/contests', icon: Trophy, label: 'Contests'},
     { href: '/leaderboard', icon: Trophy, label: 'Leaderboard'},
@@ -75,7 +79,8 @@ const navItems = {
   ],
   'Economy': [
     { href: '/wallet', icon: Wallet, label: 'Wallet' },
-    { href: '/shops', icon: ShoppingBag, label: 'Marketplace' },
+    { href: '/marketplace', icon: Sparkles, label: 'Knowledge Marketplace' },
+    { href: '/shops', icon: ShoppingBag, label: 'Shop' },
     { href: '/billing', icon: CreditCard, label: 'Billing'},
     { href: '/rewards', icon: Gift, label: 'Rewards'},
     { href: '/referrals', icon: Ticket, label: 'Referrals & Coupons' },
