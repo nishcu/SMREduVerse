@@ -16,7 +16,8 @@ import { cn } from '@/lib/utils';
 import { 
   saveParentalControlSettings, 
   getParentalControlSettings, 
-  verifyParentalCode 
+  verifyParentalCode,
+  checkParentalCodeExists
 } from './actions';
 import type { ParentalControlSettings } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
@@ -24,6 +25,7 @@ import { Loader2 } from 'lucide-react';
 export default function SettingsPage() {
     const { user, firebaseUser } = useAuth();
     const [isLocked, setIsLocked] = useState(true);
+    const [hasCode, setHasCode] = useState<boolean | null>(null); // null = checking, true = has code, false = no code
     const [secretCode, setSecretCode] = useState('');
     const [newParentalCode, setNewParentalCode] = useState('');
     const [confirmCode, setConfirmCode] = useState('');
@@ -42,10 +44,28 @@ export default function SettingsPage() {
     const { toast } = useToast();
 
     useEffect(() => {
+      if (firebaseUser) {
+        checkIfCodeExists();
+      }
+    }, [firebaseUser]);
+
+    useEffect(() => {
       if (firebaseUser && !isLocked) {
         loadSettings();
       }
     }, [firebaseUser, isLocked]);
+
+    const checkIfCodeExists = async () => {
+      if (!firebaseUser) return;
+      
+      try {
+        const idToken = await firebaseUser.getIdToken();
+        const result = await checkParentalCodeExists(idToken);
+        setHasCode(result.hasCode);
+      } catch (error) {
+        setHasCode(false);
+      }
+    };
 
     const loadSettings = async () => {
       if (!firebaseUser) return;
@@ -100,6 +120,62 @@ export default function SettingsPage() {
       setConfirmCode('');
     };
 
+    const handleSetInitialCode = async () => {
+      if (!firebaseUser) return;
+      
+      if (!newParentalCode || newParentalCode.length < 4) {
+        toast({ 
+          variant: 'destructive', 
+          title: 'Invalid Code', 
+          description: 'Code must be at least 4 characters long.' 
+        });
+        return;
+      }
+
+      if (newParentalCode !== confirmCode) {
+        toast({ 
+          variant: 'destructive', 
+          title: 'Codes Do Not Match', 
+          description: 'Please make sure both codes match.' 
+        });
+        return;
+      }
+
+      setIsSaving(true);
+      try {
+        const idToken = await firebaseUser.getIdToken();
+        
+        const settingsToSave = {
+          ...settings,
+          parentalCode: newParentalCode,
+        };
+
+        const result = await saveParentalControlSettings(idToken, settingsToSave);
+        
+        if (result.success) {
+          toast({ title: 'Success', description: 'Parental code has been set successfully. You can now unlock controls with this code.' });
+          setNewParentalCode('');
+          setConfirmCode('');
+          setHasCode(true);
+          setIsLocked(true); // Lock again after setting code
+        } else {
+          toast({ 
+            variant: 'destructive', 
+            title: 'Error', 
+            description: result.error || 'Failed to set code.' 
+          });
+        }
+      } catch (error: any) {
+        toast({ 
+          variant: 'destructive', 
+          title: 'Error', 
+          description: error.message || 'Failed to set code.' 
+        });
+      } finally {
+        setIsSaving(false);
+      }
+    };
+
     const handleSave = async () => {
       if (!firebaseUser) return;
       
@@ -118,6 +194,9 @@ export default function SettingsPage() {
           toast({ title: 'Success', description: 'Settings have been saved successfully.' });
           setNewParentalCode('');
           setConfirmCode('');
+          if (newParentalCode && newParentalCode === confirmCode) {
+            setHasCode(true);
+          }
           await loadSettings();
         } else {
           toast({ 
@@ -170,14 +249,50 @@ export default function SettingsPage() {
                         <CardHeader>
                             <CardTitle>Parental Controls</CardTitle>
                             <CardDescription>
-                                {isLocked 
+                                {hasCode === null 
+                                    ? "Checking..."
+                                    : !hasCode && isLocked
+                                    ? "Set up a parental code to manage your child's activities."
+                                    : isLocked 
                                     ? "Enter the parental code to manage your child's activities."
                                     : "Controls are unlocked. Lock them again when you're done."
                                 }
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {isLocked ? (
+                            {hasCode === null ? (
+                                <div className="flex items-center justify-center py-4">
+                                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                </div>
+                            ) : !hasCode && isLocked ? (
+                                // Initial code setup
+                                <div className="space-y-4">
+                                    <div>
+                                        <Label>Set Parental Code</Label>
+                                        <Input 
+                                            type="password" 
+                                            placeholder="New code (4-10 characters)"
+                                            value={newParentalCode}
+                                            onChange={(e) => setNewParentalCode(e.target.value)}
+                                            className="mt-2"
+                                        />
+                                        <Input 
+                                            type="password" 
+                                            placeholder="Confirm code"
+                                            value={confirmCode}
+                                            onChange={(e) => setConfirmCode(e.target.value)}
+                                            className="mt-2"
+                                        />
+                                        {newParentalCode && confirmCode && newParentalCode !== confirmCode && (
+                                            <p className="text-sm text-red-500 mt-1">Codes do not match</p>
+                                        )}
+                                        {newParentalCode && newParentalCode.length < 4 && (
+                                            <p className="text-sm text-muted-foreground mt-1">Code must be at least 4 characters</p>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : isLocked ? (
+                                // Enter existing code
                                 <div className="flex items-center gap-2">
                                     <Lock className={cn("h-5 w-5 text-muted-foreground transition-transform")} />
                                     <Input 
@@ -193,6 +308,7 @@ export default function SettingsPage() {
                                     />
                                 </div>
                             ) : (
+                                // Unlocked - can change code
                                 <div className="space-y-4">
                                     <div>
                                         <Label>Change Parental Code (Optional)</Label>
@@ -218,7 +334,25 @@ export default function SettingsPage() {
                             )}
                         </CardContent>
                         <CardFooter>
-                            {isLocked ? (
+                            {hasCode === null ? (
+                                <Button className="w-full" disabled>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Loading...
+                                </Button>
+                            ) : !hasCode && isLocked ? (
+                                <Button 
+                                    className="w-full" 
+                                    onClick={handleSetInitialCode} 
+                                    disabled={!newParentalCode || newParentalCode.length < 4 || newParentalCode !== confirmCode || isSaving}
+                                >
+                                    {isSaving ? (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Lock className="mr-2 h-4 w-4" />
+                                    )}
+                                    Set Parental Code
+                                </Button>
+                            ) : isLocked ? (
                                 <Button 
                                     className="w-full" 
                                     onClick={handleUnlock} 

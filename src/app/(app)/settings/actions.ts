@@ -138,11 +138,39 @@ export async function verifyParentalCode(idToken: string, code: string) {
       return { success: false, error: 'No parental code set.' };
     }
 
+    // If code is 'dummy', just check if code exists (for checking purposes)
+    if (code === 'dummy') {
+      return { success: false, error: 'No parental code set.' };
+    }
+
     const isValid = await bcrypt.compare(code, hashedCode);
     return { success: isValid, error: isValid ? undefined : 'Invalid code.' };
   } catch (error: any) {
     console.error('Error verifying parental code:', error);
     return { success: false, error: error.message || 'Failed to verify code.' };
+  }
+}
+
+export async function checkParentalCodeExists(idToken: string) {
+  const auth = getAdminAuth();
+  const db = getAdminDb();
+
+  try {
+    const decodedToken = await auth.verifyIdToken(idToken);
+    const uid = decodedToken.uid;
+
+    const userProfileRef = db.doc(`users/${uid}/profile/${uid}`);
+    const userProfile = await userProfileRef.get();
+
+    if (!userProfile.exists) {
+      return { success: false, hasCode: false };
+    }
+
+    const hashedCode = userProfile.data()?.parentalCode;
+    return { success: true, hasCode: !!hashedCode };
+  } catch (error: any) {
+    console.error('Error checking parental code:', error);
+    return { success: false, hasCode: false };
   }
 }
 
