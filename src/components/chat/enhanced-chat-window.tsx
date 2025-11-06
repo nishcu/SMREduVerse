@@ -294,11 +294,6 @@ export function EnhancedChatWindow({ chatId, chat }: ChatWindowProps) {
     } catch (err) {
       // Error sending message - show toast instead
       toast({
-        title: 'Failed to send message',
-        description: 'Please try again.',
-        variant: 'destructive',
-      });
-      toast({
         variant: 'destructive',
         title: 'Error',
         description: 'Failed to send message. Please try again.',
