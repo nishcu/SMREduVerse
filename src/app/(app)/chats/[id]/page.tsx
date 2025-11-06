@@ -86,13 +86,13 @@ export default function ChatPage() {
     return otherParticipant?.name || 'Private Chat';
   }, [chat, otherParticipant]);
 
-  // Get online status for private chats
+  // Get online status for private chats (optional - gracefully handle permission errors)
   const presenceRef = useMemo(
     () => otherParticipant?.uid ? (doc(db, 'presence', otherParticipant.uid) as DocumentReference<any>) : null,
     [otherParticipant?.uid]
   );
-  const { data: presence } = useDoc<any>(presenceRef);
-  const isOnline = presence?.status === 'online';
+  const { data: presence, error: presenceError } = useDoc<any>(presenceRef);
+  const isOnline = presence?.status === 'online' && !presenceError;
 
   const chatDescription = useMemo(() => {
     if (chat.type === 'group') {
@@ -100,11 +100,15 @@ export default function ChatPage() {
         chat.description || `Group chat with ${chat.participants.length} members`
       );
     }
+    // If presence data is not available (permission error), just show offline
+    if (presenceError || !presence) {
+      return 'Offline';
+    }
     const statusText = isOnline ? 'Online' : presence?.lastSeen 
       ? `Last seen ${formatDistanceToNow(presence.lastSeen.toDate(), { addSuffix: true })}`
       : 'Offline';
     return statusText;
-  }, [chat, isOnline, presence]);
+  }, [chat, isOnline, presence, presenceError]);
 
   return (
     <Card className="h-full flex flex-col">
@@ -121,7 +125,7 @@ export default function ChatPage() {
               <AvatarFallback>{getInitials(otherParticipant?.name || '?')}</AvatarFallback>
             </Avatar>
           )}
-          {chat.type === 'private' && isOnline && (
+          {chat.type === 'private' && isOnline && !presenceError && (
             <div className="absolute bottom-0 right-0">
               <Circle className="h-3 w-3 fill-green-500 text-green-500 border-2 border-background rounded-full" />
             </div>
