@@ -271,8 +271,10 @@ export function DiscoverPageContent() {
       const result = await getOrCreateChatAction(user.id, userId);
 
       if (result.success && result.chatId) {
-        // Use window.location.href to force full page reload and avoid hydration errors
-        window.location.href = `/chats/${result.chatId}`;
+        // Use router.push with a small delay to ensure chat is created
+        setTimeout(() => {
+          router.push(`/chats/${result.chatId}`);
+        }, 100);
       } else {
         setChatLoading((prev) => ({ ...prev, [userId]: false }));
         toast({

@@ -108,11 +108,11 @@ export function ChatPageContent() {
 
   // Get online status for private chats (optional - gracefully handle permission errors)
   const presenceRef = useMemo(
-    () => otherParticipant?.uid ? (doc(db, 'presence', otherParticipant.uid) as DocumentReference<any>) : null,
-    [otherParticipant?.uid]
+    () => (mounted && otherParticipant?.uid) ? (doc(db, 'presence', otherParticipant.uid) as DocumentReference<any>) : null,
+    [mounted, otherParticipant?.uid]
   );
   const { data: presence, error: presenceError } = useDoc<any>(presenceRef);
-  const isOnline = presence?.status === 'online' && !presenceError;
+  const isOnline = mounted && presence?.status === 'online' && !presenceError;
 
   // Use state to prevent hydration mismatch with date formatting
   // Initialize with empty string to avoid using chat data during initial render

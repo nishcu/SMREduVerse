@@ -118,26 +118,49 @@ export function EnhancedChatWindow({ chatId, chat }: ChatWindowProps) {
 
   // Listen for typing indicators
   useEffect(() => {
-    if (!chatId) return;
+    if (!chatId || !user?.id) return;
 
-    const typingRef = collection(db, 'chats', chatId, 'typing');
-    const unsubscribe = onSnapshot(typingRef, (snapshot) => {
-      const typing: string[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.userId !== user?.id && data.isTyping) {
-          // Check if typing indicator is recent (within last 3 seconds)
-          const typingTime = data.timestamp?.toDate?.()?.getTime() || 0;
-          const now = Date.now();
-          if (now - typingTime < 3000) {
-            typing.push(data.userId);
+    let unsubscribe: (() => void) | null = null;
+
+    try {
+      const typingRef = collection(db, 'chats', chatId, 'typing');
+      unsubscribe = onSnapshot(
+        typingRef,
+        (snapshot) => {
+          const typing: string[] = [];
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data.userId !== user?.id && data.isTyping) {
+              // Check if typing indicator is recent (within last 3 seconds)
+              const typingTime = data.timestamp?.toDate?.()?.getTime() || 0;
+              const now = Date.now();
+              if (now - typingTime < 3000) {
+                typing.push(data.userId);
+              }
+            }
+          });
+          setTypingUsers(typing);
+        },
+        (err) => {
+          // Silently handle errors for typing indicators
+          if (err.code !== 'permission-denied') {
+            // Only log non-permission errors
           }
         }
-      });
-      setTypingUsers(typing);
-    });
+      );
+    } catch (err) {
+      // Silently handle setup errors
+    }
 
-    return () => unsubscribe();
+    return () => {
+      if (unsubscribe) {
+        try {
+          unsubscribe();
+        } catch (err) {
+          // Ignore cleanup errors
+        }
+      }
+    };
   }, [chatId, user?.id]);
 
   // Mark messages as read when chat is opened
