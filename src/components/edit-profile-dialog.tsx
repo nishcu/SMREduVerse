@@ -33,13 +33,13 @@ const EducationHistorySchema = z.object({
 const ProfileFormSchema = z.object({
   name: z.string().min(1, 'Name cannot be empty.'),
   username: z.string().min(3, 'Username must be at least 3 characters.'),
-  bio: z.string().max(160, 'Bio must be 160 characters or less.').optional(),
-  avatarUrl: z.string().url('Please enter a valid image URL.').optional(),
-  grade: z.string().optional(),
-  school: z.string().optional(),
+  bio: z.string().max(160, 'Bio must be 160 characters or less.').optional().or(z.literal('')),
+  avatarUrl: z.string().url('Please enter a valid image URL.').optional().or(z.literal('')),
+  grade: z.string().optional().or(z.literal('')),
+  school: z.string().optional().or(z.literal('')),
   educationHistory: z.array(EducationHistorySchema).optional(),
-  syllabus: z.string().optional(),
-  medium: z.string().optional(),
+  syllabus: z.string().optional().or(z.literal('')),
+  medium: z.string().optional().or(z.literal('')),
   interests: z.array(z.string()).optional(),
   sports: z.array(z.string()).optional(),
 });
@@ -130,31 +130,37 @@ export function EditProfileDialog({ isOpen, onOpenChange, user }: EditProfileDia
         </DialogHeader>
         <Form {...form}>
            <form
-            onSubmit={async (e) => {
-                e.preventDefault();
+            action={async (formData: FormData) => {
                 if (!firebaseUser) return;
                 
                 setHasSubmitted(true);
-                const formData = new FormData(e.currentTarget);
                 const idToken = await firebaseUser.getIdToken();
                 formData.set('idToken', idToken);
-                formData.set('name', form.getValues('name'));
-                formData.set('username', form.getValues('username'));
-                formData.set('bio', form.getValues('bio') || '');
-                formData.set('avatarUrl', form.getValues('avatarUrl') || '');
-                formData.set('grade', form.getValues('grade') || '');
-                formData.set('school', form.getValues('school') || '');
-                formData.set('syllabus', form.getValues('syllabus') || '');
-                formData.set('medium', form.getValues('medium') || '');
                 
+                // Get form values and set them in FormData
+                const values = form.getValues();
+                formData.set('name', values.name);
+                formData.set('username', values.username);
+                formData.set('bio', values.bio || '');
+                formData.set('avatarUrl', values.avatarUrl || '');
+                formData.set('grade', values.grade || '');
+                formData.set('school', values.school || '');
+                formData.set('syllabus', values.syllabus || '');
+                formData.set('medium', values.medium || '');
+                
+                // Clear and set array fields
                 formData.delete('interests');
-                form.getValues('interests')?.forEach(interest => formData.append('interests[]', interest));
-                formData.delete('sports');
-                form.getValues('sports')?.forEach(sport => formData.append('sports[]', sport));
-                formData.delete('educationHistory');
-                form.getValues('educationHistory')?.forEach(edu => formData.append('educationHistory', JSON.stringify(edu)));
+                formData.delete('interests[]');
+                values.interests?.forEach(interest => formData.append('interests[]', interest));
                 
-                await formAction(formData);
+                formData.delete('sports');
+                formData.delete('sports[]');
+                values.sports?.forEach(sport => formData.append('sports[]', sport));
+                
+                formData.delete('educationHistory');
+                values.educationHistory?.forEach(edu => formData.append('educationHistory', JSON.stringify(edu)));
+                
+                formAction(formData);
             }}
             className="space-y-6 max-h-[70vh] overflow-y-auto pr-4"
           >

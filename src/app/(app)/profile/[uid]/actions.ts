@@ -19,13 +19,13 @@ const UpdateProfileSchema = z.object({
   idToken: z.string(),
   name: z.string().min(1, 'Name cannot be empty.'),
   username: z.string().min(3, 'Username must be at least 3 characters.'),
-  bio: z.string().max(160, 'Bio must be 160 characters or less.').optional(),
-  avatarUrl: z.string().url('Please enter a valid URL.').optional(),
-  grade: z.string().optional(),
-  school: z.string().optional(),
+  bio: z.string().max(160, 'Bio must be 160 characters or less.').optional().or(z.literal('')),
+  avatarUrl: z.string().url('Please enter a valid URL.').optional().or(z.literal('')),
+  grade: z.string().optional().or(z.literal('')),
+  school: z.string().optional().or(z.literal('')),
   educationHistory: z.array(EducationHistorySchema).optional(),
-  syllabus: z.string().optional(),
-  medium: z.string().optional(),
+  syllabus: z.string().optional().or(z.literal('')),
+  medium: z.string().optional().or(z.literal('')),
   interests: z.array(z.string()).optional(),
   sports: z.array(z.string()).optional(),
 });
@@ -56,28 +56,51 @@ export async function updateUserProfileAction(prevState: any, formData: FormData
     idToken: formData.get('idToken'),
     name: formData.get('name'),
     username: formData.get('username'),
-    bio: formData.get('bio'),
-    avatarUrl: formData.get('avatarUrl'),
-    grade: formData.get('grade'),
-    school: formData.get('school'),
-    syllabus: formData.get('syllabus'),
-    medium: formData.get('medium'),
+    bio: formData.get('bio') || '',
+    avatarUrl: formData.get('avatarUrl') || '',
+    grade: formData.get('grade') || '',
+    school: formData.get('school') || '',
+    syllabus: formData.get('syllabus') || '',
+    medium: formData.get('medium') || '',
     interests,
     sports,
     educationHistory: educationHistoryData,
   };
-
-  const validatedFields = UpdateProfileSchema.safeParse(formValues);
-
-  if (!validatedFields.success) {
-    console.error(validatedFields.error.flatten().fieldErrors);
-    return { error: 'Invalid form data.', errors: validatedFields.error.flatten().fieldErrors };
-  }
   
-  const { idToken, ...profileData } = validatedFields.data;
+  // Validate with conditional avatarUrl check
+  let validatedFields: any;
+  let profileData: any;
+  let idToken: string;
+  
+  if (!formValues.avatarUrl || formValues.avatarUrl.trim() === '') {
+    // Remove avatarUrl from validation if empty
+    const { avatarUrl, ...rest } = formValues;
+    validatedFields = UpdateProfileSchema.omit({ avatarUrl: true }).safeParse(rest);
+    
+    if (!validatedFields.success) {
+      console.error(validatedFields.error.flatten().fieldErrors);
+      return { error: 'Invalid form data.', errors: validatedFields.error.flatten().fieldErrors };
+    }
+    
+    const result = validatedFields.data;
+    idToken = result.idToken;
+    profileData = { ...result, avatarUrl: '' }; // Set to empty string
+  } else {
+    validatedFields = UpdateProfileSchema.safeParse(formValues);
+    
+    if (!validatedFields.success) {
+      console.error(validatedFields.error.flatten().fieldErrors);
+      return { error: 'Invalid form data.', errors: validatedFields.error.flatten().fieldErrors };
+    }
+    
+    const result = validatedFields.data;
+    idToken = result.idToken;
+    profileData = { ...result };
+    delete profileData.idToken;
+  }
 
   try {
-    const decodedToken = await auth.verifyIdToken(idToken as string);
+    const decodedToken = await auth.verifyIdToken(idToken);
     const uid = decodedToken.uid;
     
     // Check if username is unique (excluding the current user)
@@ -93,9 +116,19 @@ export async function updateUserProfileAction(prevState: any, formData: FormData
     const docSnap = await userRef.get();
     
     // Ensure educationHistory is an array, even if it's empty
-    const dataToUpdate = {
-        ...profileData,
-        educationHistory: profileData.educationHistory || []
+    // Remove empty strings and convert to undefined for optional fields
+    const dataToUpdate: any = {
+        name: profileData.name,
+        username: profileData.username,
+        bio: profileData.bio || '',
+        avatarUrl: profileData.avatarUrl || '',
+        grade: profileData.grade || '',
+        school: profileData.school || '',
+        syllabus: profileData.syllabus || '',
+        medium: profileData.medium || '',
+        educationHistory: profileData.educationHistory || [],
+        interests: profileData.interests || [],
+        sports: profileData.sports || [],
     };
 
     // Use set with merge if document doesn't exist, otherwise use update
@@ -122,7 +155,7 @@ export async function updateUserProfileAction(prevState: any, formData: FormData
     }
     
     revalidatePath(`/profile/${uid}`);
-    return { success: true, data: profileData };
+    return { success: true, data: dataToUpdate };
 
   } catch (error: any) {
     return { error: error.message || 'Failed to update profile.' };
