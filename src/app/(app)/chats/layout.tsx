@@ -1,4 +1,4 @@
-
+import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { EnhancedChatList } from "@/components/chat/enhanced-chat-list";
 

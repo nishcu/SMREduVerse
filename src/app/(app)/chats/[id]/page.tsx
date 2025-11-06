@@ -13,6 +13,7 @@ import { Card } from '@/components/ui/card';
 import { Circle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitials } from '@/lib/utils';
+import { formatDistanceToNow } from 'date-fns';
 
 export default function ChatPage() {
   const params = useParams();
