@@ -5,12 +5,6 @@ import { useDoc } from '@/firebase';
 import { db } from '@/lib/firebase';
 import type { Chat } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-
-type ParticipantDetail = {
-  uid: string;
-  name: string;
-  avatarUrl: string;
-};
 import { EnhancedChatWindow } from '@/components/chat/enhanced-chat-window';
 import { useAuth } from '@/hooks/use-auth';
 import { notFound, useParams } from 'next/navigation';
@@ -20,6 +14,12 @@ import { Circle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitials } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
+
+type ParticipantDetail = {
+  uid: string;
+  name: string;
+  avatarUrl: string;
+};
 
 export default function ChatPage() {
   const params = useParams();
