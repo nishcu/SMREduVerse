@@ -17,7 +17,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toggleFollowAction, checkFollowingAction } from '@/app/(app)/social/actions';
 import { getOrCreateChatAction } from '@/app/(app)/chats/actions';
 import { useRouter } from 'next/navigation';
-import { useRouter } from 'next/navigation';
 
 function UserCard({ user, isFollowing, onFollowToggle, onMessage, isLoading, isStartingChat }: { 
   user: User; 
