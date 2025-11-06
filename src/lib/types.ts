@@ -477,6 +477,13 @@ export interface PartnerProduct {
   priceInRupees?: number;
   priceInCoins?: number;
   partnerId: string;
+  category?: string;
+  featured?: boolean;
+  rating?: number;
+  reviewsCount?: number;
+  stock?: number;
+  createdAt?: Timestamp;
+  tags?: string[];
 }
 
 // CHAT-RELATED TYPES
