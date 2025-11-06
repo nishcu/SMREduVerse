@@ -43,15 +43,20 @@ export function TypingSpeedGame() {
     useEffect(() => {
         if (gameStarted && timeLeft > 0) {
             const timer = setInterval(() => {
-                setTimeLeft(prev => prev - 1);
+                setTimeLeft(prev => {
+                    if (prev <= 1) {
+                        // Calculate WPM when time runs out
+                        const wordsTyped = typedText.trim().split(/\s+/).filter(w => w.length > 0).length;
+                        const minutes = 60 / 60; // 60 seconds = 1 minute
+                        setWpm(Math.round(wordsTyped / minutes));
+                        return 0;
+                    }
+                    return prev - 1;
+                });
             }, 1000);
             return () => clearInterval(timer);
-        } else if (timeLeft === 0) {
-            const wordsTyped = typedText.trim().split(/\s+/).length;
-            const minutes = 60 / 60; // 60 seconds
-            setWpm(Math.round(wordsTyped / minutes));
         }
-    }, [gameStarted, timeLeft, typedText]);
+    }, [gameStarted, typedText]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!gameStarted) {
@@ -71,30 +76,67 @@ export function TypingSpeedGame() {
             <div className="grid grid-cols-2 gap-4 w-full max-w-lg">
                 <Card className="text-center p-4">
                     <p className="text-sm text-muted-foreground">Time Left</p>
-                    <p className="text-3xl font-bold">{timeLeft}</p>
+                    <p className="text-3xl font-bold">{timeLeft}s</p>
                 </Card>
                 <Card className="text-center p-4">
                     <p className="text-sm text-muted-foreground">WPM</p>
                     <p className="text-3xl font-bold">{wpm}</p>
                 </Card>
             </div>
+            
             <Card className="w-full max-w-lg cursor-text" onClick={handleTextClick}>
                 <CardContent className="p-6">
-                    <p className="text-xl tracking-wider leading-relaxed">
-                        {text.split('').map((char, index) => {
-                            let color = 'text-muted-foreground';
-                            if (index < typedText.length) {
-                                color = char === typedText[index] ? 'text-primary' : 'text-destructive';
-                            }
-                            return <span key={index}>{char}</span>;
-                        })}
+                    <p className="text-sm text-muted-foreground mb-4 text-center">
+                        {!gameStarted ? 'Click below and start typing to begin!' : 'Type the text below:'}
                     </p>
-                    <input ref={inputRef} type="text" className="opacity-0 absolute" value={typedText} onChange={handleInputChange} disabled={timeLeft === 0} />
+                    <div className="min-h-[120px] p-4 bg-muted/50 rounded-lg border-2 border-dashed">
+                        <p className="text-lg sm:text-xl tracking-wider leading-relaxed select-none">
+                            {text.split('').map((char, index) => {
+                                let className = 'text-muted-foreground';
+                                if (index < typedText.length) {
+                                    className = char === typedText[index] ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold bg-red-50';
+                                } else if (index === typedText.length) {
+                                    className = 'text-primary bg-primary/10 font-semibold underline'; // Current position
+                                }
+                                return <span key={index} className={className}>{char === ' ' ? '\u00A0' : char}</span>;
+                            })}
+                        </p>
+                    </div>
+                    <input 
+                        ref={inputRef} 
+                        type="text" 
+                        className="mt-4 w-full p-3 border-2 border-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-lg" 
+                        value={typedText} 
+                        onChange={handleInputChange}
+                        onKeyDown={(e) => {
+                            // Prevent backspace from going back in browser
+                            if (e.key === 'Backspace' && typedText.length === 0) {
+                                e.preventDefault();
+                            }
+                        }}
+                        disabled={timeLeft === 0}
+                        placeholder="Start typing here..."
+                        autoFocus
+                    />
+                    <p className="text-xs text-muted-foreground mt-2 text-center">
+                        Click anywhere in the text area or the input box to start typing
+                    </p>
                 </CardContent>
             </Card>
-            <Button onClick={resetGame} disabled={gameStarted && timeLeft > 0}>
-                {timeLeft === 0 ? 'Play Again' : 'Reset'}
-            </Button>
+            
+            <div className="flex gap-4">
+                <Button onClick={resetGame} variant="outline">
+                    {timeLeft === 0 ? 'Play Again' : gameStarted ? 'Reset Game' : 'Start New Game'}
+                </Button>
+                {gameStarted && timeLeft > 0 && (
+                    <Button onClick={() => {
+                        setGameStarted(false);
+                        inputRef.current?.blur();
+                    }} variant="secondary">
+                        Pause
+                    </Button>
+                )}
+            </div>
         </div>
     );
 }

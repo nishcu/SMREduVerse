@@ -39,40 +39,49 @@ export function MemoryMatchGame() {
     
     useEffect(() => {
         if (flippedCards.length === 2) {
-            setMoves(moves + 1);
+            setMoves(prevMoves => prevMoves + 1);
             const [firstIndex, secondIndex] = flippedCards;
-            const firstCard = cards[firstIndex];
-            const secondCard = cards[secondIndex];
+            
+            // Use setTimeout to check cards after state has updated
+            setTimeout(() => {
+                setCards(prevCards => {
+                    const firstCard = prevCards[firstIndex];
+                    const secondCard = prevCards[secondIndex];
 
-            if (firstCard.symbol === secondCard.symbol) {
-                setCards(prevCards =>
-                    prevCards.map(card =>
-                        card.symbol === firstCard.symbol ? { ...card, isMatched: true } : card
-                    )
-                );
+                    if (firstCard.symbol === secondCard.symbol) {
+                        // Match found - mark as matched and keep flipped
+                        return prevCards.map((card, index) =>
+                            (index === firstIndex || index === secondIndex) 
+                                ? { ...card, isMatched: true, isFlipped: true } 
+                                : card
+                        );
+                    } else {
+                        // No match - flip back
+                        return prevCards.map((card, index) =>
+                            (index === firstIndex || index === secondIndex) 
+                                ? { ...card, isFlipped: false } 
+                                : card
+                        );
+                    }
+                });
                 setFlippedCards([]);
-            } else {
-                setTimeout(() => {
-                    setCards(prevCards =>
-                        prevCards.map((card, index) =>
-                            (index === firstIndex || index === secondIndex) ? { ...card, isFlipped: false } : card
-                        )
-                    );
-                    setFlippedCards([]);
-                }, 1000);
-            }
+            }, 1000);
         }
-    }, [flippedCards, cards, moves]);
+    }, [flippedCards.length]); // Only depend on the length, not the array or cards
 
     const handleCardClick = (index: number) => {
-        if (flippedCards.length < 2 && !cards[index].isFlipped && !cards[index].isMatched) {
-            setCards(prevCards =>
-                prevCards.map((card, i) =>
-                    i === index ? { ...card, isFlipped: true } : card
-                )
-            );
-            setFlippedCards([...flippedCards, index]);
+        const card = cards[index];
+        // Prevent clicking if card is already flipped, matched, or we're checking a match
+        if (flippedCards.length >= 2 || card.isFlipped || card.isMatched) {
+            return;
         }
+        
+        setCards(prevCards =>
+            prevCards.map((c, i) =>
+                i === index ? { ...c, isFlipped: true } : c
+            )
+        );
+        setFlippedCards(prev => [...prev, index]);
     };
     
     const resetGame = () => {
