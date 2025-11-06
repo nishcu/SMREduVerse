@@ -51,7 +51,7 @@ export function MemoryMatchGame() {
     }, [flippedCards, cards, moves]);
 
     const handleCardClick = (index: number) => {
-        if (flippedCards.length < 2 && !cards[index].isFlipped) {
+        if (flippedCards.length < 2 && !cards[index].isFlipped && !cards[index].isMatched) {
             setCards(prevCards =>
                 prevCards.map((card, i) =>
                     i === index ? { ...card, isFlipped: true } : card
@@ -81,21 +81,35 @@ export function MemoryMatchGame() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-4 p-4">
+            <div className="grid grid-cols-4 gap-4 p-4 mt-20">
                 {cards.map((card, index) => (
                     <motion.div
                         key={card.id}
-                        className="aspect-square rounded-lg cursor-pointer"
+                        className="aspect-square rounded-lg cursor-pointer relative"
                         onClick={() => handleCardClick(index)}
-                        animate={{ rotateY: card.isFlipped ? 180 : 0 }}
-                        transition={{ duration: 0.5 }}
-                        style={{ transformStyle: 'preserve-3d' }}
+                        style={{ perspective: '1000px' }}
                     >
-                        <div className="absolute w-full h-full rounded-lg bg-primary flex items-center justify-center" style={{ backfaceVisibility: 'hidden' }}>
-                        </div>
-                        <div className="absolute w-full h-full rounded-lg bg-secondary flex items-center justify-center text-4xl" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
-                            {card.symbol}
-                        </div>
+                        <motion.div
+                            className="w-full h-full rounded-lg relative"
+                            style={{ transformStyle: 'preserve-3d' }}
+                            animate={{ rotateY: card.isFlipped || card.isMatched ? 180 : 0 }}
+                            transition={{ duration: 0.6 }}
+                        >
+                            {/* Card back */}
+                            <div 
+                                className="absolute inset-0 w-full h-full rounded-lg bg-primary flex items-center justify-center border-2 border-primary-foreground/20"
+                                style={{ backfaceVisibility: 'hidden', transform: 'rotateY(0deg)' }}
+                            >
+                                <span className="text-2xl">?</span>
+                            </div>
+                            {/* Card front */}
+                            <div 
+                                className="absolute inset-0 w-full h-full rounded-lg bg-secondary flex items-center justify-center text-4xl border-2 border-secondary-foreground/20"
+                                style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+                            >
+                                {card.symbol}
+                            </div>
+                        </motion.div>
                     </motion.div>
                 ))}
             </div>
