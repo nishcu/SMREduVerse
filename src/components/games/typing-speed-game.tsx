@@ -89,8 +89,8 @@ export function TypingSpeedGame() {
                     <p className="text-sm text-muted-foreground mb-4 text-center">
                         {!gameStarted ? 'Click below and start typing to begin!' : 'Type the text below:'}
                     </p>
-                    <div className="min-h-[120px] p-4 bg-muted/50 rounded-lg border-2 border-dashed">
-                        <p className="text-lg sm:text-xl tracking-wider leading-relaxed select-none">
+                    <div className="min-h-[120px] max-h-[200px] p-4 bg-muted/50 rounded-lg border-2 border-dashed overflow-y-auto">
+                        <p className="text-base sm:text-lg tracking-wider leading-relaxed select-none break-words whitespace-pre-wrap">
                             {text.split('').map((char, index) => {
                                 let className = 'text-muted-foreground';
                                 if (index < typedText.length) {
