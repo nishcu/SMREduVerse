@@ -41,6 +41,9 @@ import {
   SidebarInset,
   SidebarTrigger,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/logo';
 import { useAuth } from '@/hooks/use-auth';
@@ -54,9 +57,16 @@ import { usePresence } from '@/lib/chat-presence';
 import { MobileNumberPrompt } from '@/components/mobile-number-prompt';
 
 const navItems = {
-  'Core': [
+  'Home & Profile': [
     { href: '/dashboard', icon: LayoutGrid, label: 'Dashboard' },
     { href: '/profile/me', icon: Home, label: 'Profile' },
+  ],
+  'Social': [
+    { href: '/social', icon: Users, label: 'Social Feed' },
+    { href: '/chats', icon: MessageSquare, label: 'Chats' },
+    { href: '/challenges', icon: Target, label: 'Challenges' },
+    { href: '/contests', icon: Trophy, label: 'Contests'},
+    { href: '/leaderboard', icon: Trophy, label: 'Leaderboard'},
   ],
   'Learning': [
     { href: '/my-classes', icon: School, label: 'My Classes' },
@@ -66,17 +76,10 @@ const navItems = {
     { href: '/tutors', icon: UserIcon, label: 'Tutors' },
     { href: '/study-rooms', icon: Users, label: 'Study Rooms' },
   ],
-  'Community': [
-    { href: '/social', icon: Users, label: 'Social' },
-    { href: '/challenges', icon: Target, label: 'Challenges' },
-    { href: '/chats', icon: MessageSquare, label: 'Chats' },
-    { href: '/contests', icon: Trophy, label: 'Contests'},
-    { href: '/leaderboard', icon: Trophy, label: 'Leaderboard'},
-  ],
-  'Engagement': [
+  'Activities': [
+    { href: '/games', icon: Gamepad2, label: 'Games' },
     { href: '/brain-lab', icon: Bot, label: 'Brain Lab' },
     { href: '/brain-quest', icon: Map, label: 'Brain Quest' },
-    { href: '/games', icon: Gamepad2, label: 'Games' },
     { href: '/talent-hub', icon: Video, label: 'Talent Hub' },
   ],
   'Economy': [
@@ -133,25 +136,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Logo />
         </SidebarHeader>
         <SidebarContent>
-          <SidebarMenu>
-            {Object.entries(navItems).map(([group, items]) => (
-                <div key={group}>
-                    {items.map((item) => (
+          {Object.entries(navItems).map(([group, items]) => (
+            <SidebarGroup key={group}>
+              <SidebarGroupLabel>{group}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {items.map((item) => (
                     <SidebarMenuItem key={item.href}>
-                        <Link href={item.href}>
-                            <SidebarMenuButton
-                                isActive={pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/dashboard' && item.href !== `/profile/${user.id}`)}
-                                tooltip={item.label}
-                            >
-                                <item.icon />
-                                <span>{item.label}</span>
-                            </SidebarMenuButton>
-                        </Link>
+                      <Link href={item.href}>
+                        <SidebarMenuButton
+                          isActive={pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/dashboard' && item.href !== `/profile/${user.id}`)}
+                          tooltip={item.label}
+                        >
+                          <item.icon />
+                          <span>{item.label}</span>
+                        </SidebarMenuButton>
+                      </Link>
                     </SidebarMenuItem>
-                    ))}
-                </div>
-            ))}
-          </SidebarMenu>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))}
         </SidebarContent>
         <SidebarFooter>
             <SidebarMenu>
