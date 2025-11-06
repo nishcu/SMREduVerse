@@ -439,11 +439,10 @@ export async function getFollowingFeedAction(idToken: string, limit: number = 20
     }
 
     // Get posts from followed users
+    // Note: Using where().orderBy() requires an index, so we fetch without orderBy and sort in memory
     const postsSnapshot = await db
       .collection('posts')
       .where('authorUid', 'in', followingUserIds.slice(0, 10)) // Firestore 'in' limit is 10
-      .orderBy('createdAt', 'desc')
-      .limit(limit)
       .get();
 
     // If more than 10 users, query in batches
@@ -465,8 +464,6 @@ export async function getFollowingFeedAction(idToken: string, limit: number = 20
         const batchSnapshot = await db
           .collection('posts')
           .where('authorUid', 'in', batch)
-          .orderBy('createdAt', 'desc')
-          .limit(limit)
           .get();
         
         const batchPosts = batchSnapshot.docs.map((doc) => {
@@ -481,21 +478,21 @@ export async function getFollowingFeedAction(idToken: string, limit: number = 20
         });
         posts = [...posts, ...batchPosts];
       }
-      
-      // Sort by createdAt and limit
-      posts = posts
-        .sort((a, b) => {
-          // Handle both ISO string and Timestamp formats
-          const aTime = typeof a.createdAt === 'string' 
-            ? new Date(a.createdAt).getTime() 
-            : a.createdAt?.toMillis?.() || 0;
-          const bTime = typeof b.createdAt === 'string'
-            ? new Date(b.createdAt).getTime()
-            : b.createdAt?.toMillis?.() || 0;
-          return bTime - aTime;
-        })
-        .slice(0, limit);
     }
+    
+    // Sort by createdAt in memory (descending - newest first) and limit
+    posts = posts
+      .sort((a, b) => {
+        // Handle both ISO string and Timestamp formats
+        const aTime = typeof a.createdAt === 'string' 
+          ? new Date(a.createdAt).getTime() 
+          : a.createdAt?.toMillis?.() || 0;
+        const bTime = typeof b.createdAt === 'string'
+          ? new Date(b.createdAt).getTime()
+          : b.createdAt?.toMillis?.() || 0;
+        return bTime - aTime;
+      })
+      .slice(0, limit);
 
     return { success: true, posts };
   } catch (error: any) {
@@ -513,30 +510,53 @@ export async function getTrendingFeedAction(limit: number = 20) {
   const db = getAdminDb();
 
   try {
-    // Get posts ordered by engagement score (likes + comments * 2)
-    // For now, we'll order by likes + comments, but ideally we'd calculate engagement score
+    // Get all posts (or a larger sample) to calculate engagement score
+    // Fetch more posts to ensure we have enough to calculate trending
     const postsSnapshot = await db
       .collection('posts')
-      .orderBy('likes', 'desc')
-      .limit(limit * 2) // Get more to filter
       .get();
 
+    // Calculate engagement score for each post
+    // Engagement = (likes * 1) + (comments * 2) + (recent boost if within 24 hours)
+    const now = Date.now();
+    const oneDayAgo = now - (24 * 60 * 60 * 1000);
+    
     const posts = postsSnapshot.docs
       .map((doc) => {
         const data = doc.data();
-        const engagement = (data.likes || 0) + (data.comments || 0) * 2;
+        const likes = data.likes || 0;
+        const comments = data.comments || 0;
+        
+        // Calculate time-based boost (posts from last 24 hours get boost)
+        const createdAt = data.createdAt?.toDate ? data.createdAt.toDate().getTime() : 
+                          (typeof data.createdAt === 'string' ? new Date(data.createdAt).getTime() : now);
+        const isRecent = createdAt > oneDayAgo;
+        const timeBoost = isRecent ? 5 : 0; // Boost recent posts
+        
+        // Engagement score: likes + (comments * 2) + time boost
+        const engagement = likes + (comments * 2) + timeBoost;
         
         // Convert Firestore Timestamp to serializable format
-        const createdAt = data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt;
+        const createdAtISO = data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : 
+                            (typeof data.createdAt === 'string' ? data.createdAt : new Date(createdAt).toISOString());
         
         return {
           id: doc.id,
           ...data,
-          createdAt: createdAt,
+          createdAt: createdAtISO,
           engagement,
         };
       })
-      .sort((a, b) => b.engagement - a.engagement)
+      .sort((a, b) => {
+        // Primary sort: engagement score (descending)
+        if (b.engagement !== a.engagement) {
+          return b.engagement - a.engagement;
+        }
+        // Secondary sort: most recent (descending) if engagement is equal
+        const aTime = typeof a.createdAt === 'string' ? new Date(a.createdAt).getTime() : 0;
+        const bTime = typeof b.createdAt === 'string' ? new Date(b.createdAt).getTime() : 0;
+        return bTime - aTime;
+      })
       .slice(0, limit);
 
     return { success: true, posts };
