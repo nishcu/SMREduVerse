@@ -30,6 +30,11 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Exclude server-only packages from webpack bundling
+  serverComponentsExternalPackages: [
+    'firebase-admin',
+    'bcryptjs',
+  ],
 };
 
 export default nextConfig;

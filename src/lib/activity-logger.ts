@@ -4,6 +4,8 @@ import { getAdminDb } from '@/lib/firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import type { ActivityLog } from '@/lib/types';
 
+// This file must only be imported in server actions/components
+
 export async function logActivity(
   userId: string,
   activityType: ActivityLog['activityType'],
@@ -47,7 +49,6 @@ export async function logActivity(
     await activityRef.set(activityLog);
 
     // Check if user has a parent and trigger notification if needed
-    const parentId = userProfile.data()?.parentId;
     if (parentId) {
       await checkAndSendParentNotification(parentId, userId);
     }
