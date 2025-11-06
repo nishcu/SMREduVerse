@@ -354,14 +354,13 @@ export async function getChallengesAction(idToken?: string, limit: number = 20) 
     }
 
     // Get active challenges
+    // Note: Using where().orderBy() requires an index, so we fetch without orderBy and sort in memory
     const challengesSnapshot = await db
       .collection('challenges')
       .where('status', 'in', ['upcoming', 'active'])
-      .orderBy('createdAt', 'desc')
-      .limit(limit)
       .get();
 
-    const challenges = challengesSnapshot.docs.map((doc) => {
+    let challenges = challengesSnapshot.docs.map((doc) => {
       const data = doc.data();
       return {
         id: doc.id,
@@ -373,6 +372,19 @@ export async function getChallengesAction(idToken?: string, limit: number = 20) 
         isJoined: uid ? data.participants?.includes(uid) : false,
       };
     });
+
+    // Sort by createdAt in memory (descending - newest first) and limit
+    challenges = challenges
+      .sort((a: any, b: any) => {
+        const aTime = typeof a.createdAt === 'string' 
+          ? new Date(a.createdAt).getTime() 
+          : a.createdAt?.toMillis?.() || 0;
+        const bTime = typeof b.createdAt === 'string'
+          ? new Date(b.createdAt).getTime()
+          : b.createdAt?.toMillis?.() || 0;
+        return bTime - aTime;
+      })
+      .slice(0, limit);
 
     return {
       success: true,
@@ -397,13 +409,13 @@ export async function getUserChallengesAction(idToken: string) {
     const uid = decodedToken.uid;
 
     // Get challenges where user is participant
+    // Note: Using where().orderBy() requires an index, so we fetch without orderBy and sort in memory
     const challengesSnapshot = await db
       .collection('challenges')
       .where('participants', 'array-contains', uid)
-      .orderBy('createdAt', 'desc')
       .get();
 
-    const challenges = challengesSnapshot.docs.map((doc) => {
+    let challenges = challengesSnapshot.docs.map((doc) => {
       const data = doc.data();
       return {
         id: doc.id,
@@ -414,6 +426,17 @@ export async function getUserChallengesAction(idToken: string) {
         updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
         userProgress: data.participantDetails?.[uid]?.progress || 0,
       };
+    });
+
+    // Sort by createdAt in memory (descending - newest first)
+    challenges = challenges.sort((a: any, b: any) => {
+      const aTime = typeof a.createdAt === 'string' 
+        ? new Date(a.createdAt).getTime() 
+        : a.createdAt?.toMillis?.() || 0;
+      const bTime = typeof b.createdAt === 'string'
+        ? new Date(b.createdAt).getTime()
+        : b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
     });
 
     return {
