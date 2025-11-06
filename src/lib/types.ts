@@ -393,6 +393,58 @@ export interface Partner {
     coursesOffered: number;
     expertTutors: number;
   };
+  // Enhanced fields for institutions
+  institutionType?: 'school' | 'college' | 'university' | 'academy' | 'other';
+  verified?: boolean;
+  accreditation?: string[];
+  location?: {
+    address: string;
+    city: string;
+    state: string;
+    country: string;
+    pincode?: string;
+  };
+  contactInfo?: {
+    phone?: string;
+    mobile?: string;
+    email: string;
+    alternateEmail?: string;
+  };
+  socialMedia?: {
+    facebook?: string;
+    twitter?: string;
+    linkedin?: string;
+    instagram?: string;
+    youtube?: string;
+  };
+  programs?: {
+    name: string;
+    level: 'certificate' | 'diploma' | 'degree' | 'postgraduate' | 'other';
+    duration?: string;
+    description?: string;
+  }[];
+  facilities?: string[];
+  establishedYear?: number;
+  facultyCount?: number;
+  studentCapacity?: number;
+  admissionInfo?: {
+    open: boolean;
+    process?: string;
+    requirements?: string[];
+    feeStructure?: string;
+    scholarshipInfo?: string;
+  };
+  gallery?: string[]; // Image URLs
+  testimonials?: {
+    name: string;
+    role: string;
+    content: string;
+    imageUrl?: string;
+  }[];
+  partnershipTier?: 'basic' | 'premium' | 'enterprise';
+  revenueShare?: number;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 export interface PartnerApplication {

@@ -5,10 +5,11 @@ import { notFound, useRouter, useParams } from 'next/navigation';
 import { getPartnerDataAction } from '../actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { PartnerCourseCard } from '@/components/partner-course-card';
 import { ProductCard } from '@/components/product-card';
 import { ContestCard } from '@/components/contest-card';
-import { ArrowUpRight, BookOpen, Mail, Users, Award, MessageSquare, Edit, Shield, PlusCircle } from 'lucide-react';
+import { ArrowUpRight, BookOpen, Mail, Users, Award, MessageSquare, Edit, Shield, PlusCircle, MapPin, Phone, Calendar, GraduationCap, Building2, CheckCircle2, Facebook, Twitter, Linkedin, Instagram, Youtube, ExternalLink, Clock, School, FileText } from 'lucide-react';
 import { getOrCreateChatAction } from '@/app/(app)/chats/actions';
 import { useAuth } from '@/hooks/use-auth';
 import type { Partner, PartnerCourse, PartnerProduct, Contest } from '@/lib/types';
@@ -156,9 +157,24 @@ export default function PartnerDetailPage() {
                 <p className="text-muted-foreground">{partner.tagline}</p>
             </div>
             <div className="flex gap-2 flex-wrap pb-2">
-                {partner.websiteUrl && <Button asChild><a href={partner.websiteUrl} target="_blank" rel="noopener noreferrer">Visit Website <ArrowUpRight className="ml-2 h-4 w-4" /></a></Button>}
-                {partner.contactEmail && <Button variant="outline" asChild><a href={`mailto:${partner.contactEmail}`}><Mail className="mr-2 h-4 w-4" /> Contact</a></Button>}
-                <Button variant="outline" onClick={handleStartChat} disabled={isPending}><MessageSquare className="mr-2 h-4 w-4" />{isPending ? 'Starting...' : 'Message'}</Button>
+                {partner.verified && (
+                    <Badge variant="default" className="mb-2">
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                        Verified Institution
+                    </Badge>
+                )}
+                {partner.institutionType && (
+                    <Badge variant="outline" className="mb-2">
+                        {partner.institutionType === 'school' && <School className="h-3 w-3 mr-1" />}
+                        {partner.institutionType === 'college' && <GraduationCap className="h-3 w-3 mr-1" />}
+                        {partner.institutionType === 'university' && <Building2 className="h-3 w-3 mr-1" />}
+                        {partner.institutionType === 'academy' && <Award className="h-3 w-3 mr-1" />}
+                        {partner.institutionType.charAt(0).toUpperCase() + partner.institutionType.slice(1)}
+                    </Badge>
+                )}
+                {partner.websiteUrl && <Button asChild size="sm"><a href={partner.websiteUrl} target="_blank" rel="noopener noreferrer">Visit Website <ArrowUpRight className="ml-2 h-4 w-4" /></a></Button>}
+                {partner.contactEmail && <Button variant="outline" size="sm" asChild><a href={`mailto:${partner.contactEmail}`}><Mail className="mr-2 h-4 w-4" /> Contact</a></Button>}
+                <Button variant="outline" size="sm" onClick={handleStartChat} disabled={isPending}><MessageSquare className="mr-2 h-4 w-4" />{isPending ? 'Starting...' : 'Message'}</Button>
             </div>
         </div>
       </div>
@@ -170,10 +186,222 @@ export default function PartnerDetailPage() {
             <CardHeader>
               <CardTitle>About {partner.name}</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <p className="text-muted-foreground">{partner.description}</p>
+              
+              {/* Institution Details */}
+              {(partner.establishedYear || partner.location || partner.contactInfo) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                  {partner.establishedYear && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Established:</span>
+                      <span className="font-semibold">{partner.establishedYear}</span>
+                    </div>
+                  )}
+                  {partner.location && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Location:</span>
+                      <span className="font-semibold">{partner.location.city}, {partner.location.state}</span>
+                    </div>
+                  )}
+                  {partner.contactInfo?.phone && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Phone:</span>
+                      <a href={`tel:${partner.contactInfo.phone}`} className="font-semibold hover:underline">{partner.contactInfo.phone}</a>
+                    </div>
+                  )}
+                  {partner.facultyCount && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Faculty:</span>
+                      <span className="font-semibold">{partner.facultyCount}+</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Accreditation */}
+              {partner.accreditation && partner.accreditation.length > 0 && (
+                <div className="pt-4 border-t">
+                  <p className="text-sm font-semibold mb-2">Accreditations & Affiliations:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {partner.accreditation.map((acc, idx) => (
+                      <Badge key={idx} variant="secondary">{acc}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Social Media */}
+              {partner.socialMedia && (
+                <div className="pt-4 border-t">
+                  <p className="text-sm font-semibold mb-2">Connect With Us:</p>
+                  <div className="flex gap-2">
+                    {partner.socialMedia.facebook && (
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={partner.socialMedia.facebook} target="_blank" rel="noopener noreferrer">
+                          <Facebook className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )}
+                    {partner.socialMedia.twitter && (
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={partner.socialMedia.twitter} target="_blank" rel="noopener noreferrer">
+                          <Twitter className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )}
+                    {partner.socialMedia.linkedin && (
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={partner.socialMedia.linkedin} target="_blank" rel="noopener noreferrer">
+                          <Linkedin className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )}
+                    {partner.socialMedia.instagram && (
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={partner.socialMedia.instagram} target="_blank" rel="noopener noreferrer">
+                          <Instagram className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )}
+                    {partner.socialMedia.youtube && (
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={partner.socialMedia.youtube} target="_blank" rel="noopener noreferrer">
+                          <Youtube className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {/* Programs Offered */}
+          {partner.programs && partner.programs.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Programs & Degrees Offered</CardTitle>
+                <CardDescription>Explore our comprehensive educational programs</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {partner.programs.map((program, idx) => (
+                    <div key={idx} className="border rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-semibold">{program.name}</h4>
+                        <Badge variant="outline" className="text-xs">
+                          {program.level}
+                        </Badge>
+                      </div>
+                      {program.duration && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                          <Clock className="h-3 w-3" />
+                          <span>{program.duration}</span>
+                        </div>
+                      )}
+                      {program.description && (
+                        <p className="text-sm text-muted-foreground">{program.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Admissions Information */}
+          {partner.admissionInfo && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Admissions Information</CardTitle>
+                <CardDescription>
+                  {partner.admissionInfo.open ? (
+                    <Badge variant="default" className="mt-2">Admissions Open</Badge>
+                  ) : (
+                    <Badge variant="outline" className="mt-2">Admissions Closed</Badge>
+                  )}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {partner.admissionInfo.process && (
+                  <div>
+                    <p className="text-sm font-semibold mb-2">Admission Process:</p>
+                    <p className="text-sm text-muted-foreground">{partner.admissionInfo.process}</p>
+                  </div>
+                )}
+                {partner.admissionInfo.requirements && partner.admissionInfo.requirements.length > 0 && (
+                  <div>
+                    <p className="text-sm font-semibold mb-2">Requirements:</p>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                      {partner.admissionInfo.requirements.map((req, idx) => (
+                        <li key={idx}>{req}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {partner.admissionInfo.feeStructure && (
+                  <div>
+                    <p className="text-sm font-semibold mb-2">Fee Structure:</p>
+                    <p className="text-sm text-muted-foreground">{partner.admissionInfo.feeStructure}</p>
+                  </div>
+                )}
+                {partner.admissionInfo.scholarshipInfo && (
+                  <div>
+                    <p className="text-sm font-semibold mb-2">Scholarship Information:</p>
+                    <p className="text-sm text-muted-foreground">{partner.admissionInfo.scholarshipInfo}</p>
+                  </div>
+                )}
+                <Button className="w-full" asChild>
+                  <a href={`mailto:${partner.contactEmail}?subject=Admission Inquiry`}>
+                    Inquire About Admissions
+                  </a>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Facilities */}
+          {partner.facilities && partner.facilities.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Facilities & Infrastructure</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {partner.facilities.map((facility, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-sm border rounded-lg p-3">
+                      <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                      <span>{facility}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Achievements */}
+          {partner.achievements && partner.achievements.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Achievements & Recognition</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {partner.achievements.map((achievement, idx) => (
+                    <div key={idx} className="flex items-start gap-3 p-3 border rounded-lg">
+                      <Award className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                      <p className="text-sm">{achievement}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <div>
              <div className="flex justify-between items-center mb-4">
@@ -260,8 +488,30 @@ export default function PartnerDetailPage() {
               {partner.stats.studentsTaught > 0 && <StatCard title="Students Taught" value={partner.stats.studentsTaught} icon={<Users />} />}
               {partner.stats.coursesOffered > 0 && <StatCard title="Courses Offered" value={partner.stats.coursesOffered} icon={<BookOpen />} />}
               {partner.stats.expertTutors > 0 && <StatCard title="Expert Tutors" value={partner.stats.expertTutors} icon={<Award />} />}
+              {partner.facultyCount && <StatCard title="Faculty Members" value={partner.facultyCount} icon={<Users />} />}
+              {partner.studentCapacity && <StatCard title="Student Capacity" value={partner.studentCapacity} icon={<GraduationCap />} />}
             </CardContent>
           </Card>
+          
+          {/* Location Card */}
+          {partner.location && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  Location
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-sm">{partner.location.address}</p>
+                <p className="text-sm text-muted-foreground">
+                  {partner.location.city}, {partner.location.state}
+                  {partner.location.pincode && ` - ${partner.location.pincode}`}
+                </p>
+                <p className="text-sm text-muted-foreground">{partner.location.country}</p>
+              </CardContent>
+            </Card>
+          )}
           <Card className="bg-primary/10 border-primary/50 sticky top-20">
             <CardHeader>
               <CardTitle>Start Your Journey</CardTitle>
