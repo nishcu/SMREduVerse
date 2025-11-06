@@ -268,8 +268,7 @@ export function DiscoverPageContent() {
     setChatLoading((prev) => ({ ...prev, [userId]: true }));
 
     try {
-      const idToken = await firebaseUser.getIdToken();
-      const result = await getOrCreateChatAction(idToken, user.id, userId);
+      const result = await getOrCreateChatAction(user.id, userId);
 
       if (result.success && result.chatId) {
         // Small delay to ensure chat is created before navigation

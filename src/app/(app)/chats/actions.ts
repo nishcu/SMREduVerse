@@ -31,8 +31,24 @@ export async function getOrCreateChatAction(uid1: string, uid2: string) {
         }
 
         // Fetch user profiles to store names and avatars
-        const user1ProfileSnap = await db.doc(`users/${uid1}/profile/${uid1}`).get();
-        const user2ProfileSnap = await db.doc(`users/${uid2}/profile/${uid2}`).get();
+        // Try direct path first, then fallback to collectionGroup if needed
+        let user1ProfileSnap = await db.doc(`users/${uid1}/profile/${uid1}`).get();
+        let user2ProfileSnap = await db.doc(`users/${uid2}/profile/${uid2}`).get();
+        
+        // If direct path doesn't exist, try collectionGroup query
+        if (!user1ProfileSnap.exists) {
+            const user1Query = await db.collectionGroup('profile').where('id', '==', uid1).limit(1).get();
+            if (!user1Query.empty) {
+                user1ProfileSnap = user1Query.docs[0];
+            }
+        }
+        
+        if (!user2ProfileSnap.exists) {
+            const user2Query = await db.collectionGroup('profile').where('id', '==', uid2).limit(1).get();
+            if (!user2Query.empty) {
+                user2ProfileSnap = user2Query.docs[0];
+            }
+        }
         
         if (!user1ProfileSnap.exists || !user2ProfileSnap.exists) {
             return { success: false, error: 'One or both user profiles not found.' };
