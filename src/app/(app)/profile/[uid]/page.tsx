@@ -6,6 +6,7 @@ import { doc, DocumentReference } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { User } from '@/lib/types';
 import { useMemo } from 'react';
+import { useAuth } from '@/hooks/use-auth';
 import { PostsFeed } from '@/app/(app)/social/posts-feed';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -98,6 +99,7 @@ function ProfileDetails({ user }: { user: User }) {
 export default function ProfilePage() {
   const params = useParams();
   const uid = params.uid as string;
+  const { user: currentUser } = useAuth();
 
   const userRef = useMemo(() => (uid ? (doc(db, 'users', uid, 'profile', uid) as DocumentReference<User>) : null), [uid]);
   const { data: profile, loading } = useDoc<User>(userRef);
@@ -106,17 +108,29 @@ export default function ProfilePage() {
     return <ProfilePageSkeleton />;
   }
 
+  // If profile doesn't exist, show a helpful message
+  if (!profile) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <p className="text-lg text-muted-foreground">Profile not found</p>
+        <p className="text-sm text-muted-foreground">
+          {uid === currentUser?.id 
+            ? "Your profile hasn't been created yet. Please refresh the page or contact support."
+            : "This user profile doesn't exist."}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
         <div className="md:col-span-2">
             {/* In a real implementation, PostsFeed would be filtered by the user's ID. */}
             <PostsFeed />
         </div>
-        {profile && (
-            <div className="md:col-span-1">
-                <ProfileDetails user={profile} />
-            </div>
-        )}
+        <div className="md:col-span-1">
+            <ProfileDetails user={profile} />
+        </div>
     </div>
   );
 }

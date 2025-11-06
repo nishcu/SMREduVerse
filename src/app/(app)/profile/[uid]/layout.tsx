@@ -51,13 +51,27 @@ export default function ProfileLayout({
     return <ProfileSkeleton />;
   }
 
-  if (error || !profile) {
+  // Only show notFound if there's a critical error, not if profile just doesn't exist yet
+  // Allow the page component to handle missing profiles gracefully
+  if (error && error.message.includes('permission')) {
     notFound();
   }
 
+  // If profile exists, show the header; otherwise let children handle it
   return (
     <div className="space-y-8">
-      <ProfileHeader user={profile} />
+      {profile && <ProfileHeader user={profile} />}
+      {!profile && !loading && (
+        <div className="space-y-8">
+          <div className="flex flex-col md:flex-row gap-8">
+            <div className="h-32 w-32 rounded-full bg-muted animate-pulse" />
+            <div className="flex-1 space-y-4">
+              <div className="h-8 w-48 bg-muted animate-pulse rounded" />
+              <div className="h-16 w-full bg-muted animate-pulse rounded" />
+            </div>
+          </div>
+        </div>
+      )}
       <div>{children}</div>
     </div>
   );
