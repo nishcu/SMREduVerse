@@ -51,6 +51,7 @@ import { Button } from '@/components/ui/button';
 import { GlobalSearch } from '@/components/global-search';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 import { usePresence } from '@/lib/chat-presence';
+import { MobileNumberPrompt } from '@/components/mobile-number-prompt';
 
 const navItems = {
   'Core': [
@@ -184,6 +185,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
+        <MobileNumberPrompt />
         <header className="flex h-14 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="md:hidden" />
