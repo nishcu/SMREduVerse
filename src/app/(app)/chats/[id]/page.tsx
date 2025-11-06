@@ -22,9 +22,15 @@ type ParticipantDetail = {
 };
 
 export default function ChatPage() {
+  const [mounted, setMounted] = useState(false);
   const params = useParams();
   const chatId = params.id as string;
   const { user, loading: userLoading } = useAuth();
+
+  // Prevent hydration mismatch by only rendering after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const chatRef = useMemo(
     () => (chatId ? (doc(db, 'chats', chatId) as DocumentReference<Chat>) : null),
@@ -33,9 +39,9 @@ export default function ChatPage() {
 
   const { data: chat, loading: chatLoading, error } = useDoc<Chat>(chatRef);
 
-  const loading = userLoading || chatLoading;
+  const loading = userLoading || chatLoading || !mounted;
 
-  if (loading) {
+  if (loading || !mounted) {
     console.log('ChatPage loading:', { userLoading, chatLoading, chatId, user: user?.id });
     return (
       <Card className="h-full flex flex-col">

@@ -64,9 +64,7 @@ function MessageBubble({
           </a>
         )}
         <div className="flex items-center justify-end gap-1 mt-1">
-          <p className="text-xs opacity-70">
-            {message.timestamp ? format(message.timestamp.toDate(), 'HH:mm') : 'Sending...'}
-          </p>
+          <MessageTime timestamp={message.timestamp} />
           {isOwn && (
             <div className="ml-1">
               {isRead ? (
