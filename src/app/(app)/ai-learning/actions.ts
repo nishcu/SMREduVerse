@@ -84,9 +84,9 @@ export async function getPersonalizedFeedAction(idToken: string, limit: number =
 
     // 2. Study Buddy Recommendations
     // Find users with similar interests/subjects
-    if (followingUserIds.length < 10) {
+    if (followingUserIds.length < 10 && userInterests.length > 0) {
       const usersSnapshot = await db.collectionGroup('profile')
-        .where('interests', 'array-contains-any', userInterests.length > 0 ? userInterests.slice(0, 10) : [])
+        .where('interests', 'array-contains-any', userInterests.slice(0, 10))
         .limit(20)
         .get();
 
@@ -102,13 +102,6 @@ export async function getPersonalizedFeedAction(idToken: string, limit: number =
             userInterests.includes(interest)
           );
           score += commonInterests.length * 10;
-
-          // Boost score if user is active (has posts, enrollments, etc.)
-          const userPostsSnapshot = db.collection('posts')
-            .where('authorUid', '==', userId)
-            .limit(1)
-            .get();
-          // This would need to be awaited, but for now we'll use a simpler approach
 
           recommendations.push({
             userId,
