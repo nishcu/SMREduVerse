@@ -130,30 +130,30 @@ export async function getPersonalizedFeedAction(idToken: string, limit: number =
 
     if (postsSnapshot && postsSnapshot.docs) {
       postsSnapshot.docs.forEach((doc: any) => {
-      const post = doc.data();
-      let score = 30;
+        const post = doc.data();
+        let score = 30;
 
-      // Boost score if post has high engagement
-      const engagement = (post.likes || 0) + (post.comments || 0) * 2;
-      score += Math.min(30, engagement / 10);
+        // Boost score if post has high engagement
+        const engagement = (post.likes || 0) + (post.comments || 0) * 2;
+        score += Math.min(30, engagement / 10);
 
-      // Boost score if post matches user interests
-      if (post.subject && userInterests.some((interest: string) => 
-        post.subject.toLowerCase().includes(interest.toLowerCase())
-      )) {
-        score += 20;
-      }
+        // Boost score if post matches user interests
+        if (post.subject && userInterests.some((interest: string) => 
+          post.subject.toLowerCase().includes(interest.toLowerCase())
+        )) {
+          score += 20;
+        }
 
-      recommendations.push({
-        postId: doc.id,
-        type: 'content',
-        reason: `Engaging post about ${post.subject || 'learning'}`,
-        score: Math.min(100, score),
-        socialSignals: {
-          friendsLearning: followingUserIds.includes(post.authorUid) ? 1 : 0,
-          trending: engagement > 50,
-        },
-      });
+        recommendations.push({
+          postId: doc.id,
+          type: 'content',
+          reason: `Engaging post about ${post.subject || 'learning'}`,
+          score: Math.min(100, score),
+          socialSignals: {
+            friendsLearning: followingUserIds.includes(post.authorUid) ? 1 : 0,
+            trending: engagement > 50,
+          },
+        });
       });
     }
 
