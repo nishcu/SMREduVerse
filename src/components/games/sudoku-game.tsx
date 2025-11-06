@@ -3,34 +3,68 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-// Simple Sudoku generator
-const generatePuzzle = () => {
+// Simple Sudoku generator with proper puzzle generation
+const generatePuzzle = (): Array<Array<{ value: number | null; isGiven: boolean; isCorrect: boolean; solution: number }>> => {
     try {
-        // Dynamic import to handle potential module issues
-        const sudoku = require('sudoku');
-        const puzzleString = sudoku.generate('easy');
-        const puzzleGrid = sudoku.board_string_to_grid(puzzleString);
-        const solutionGrid = sudoku.board_string_to_grid(sudoku.solve(puzzleString));
-        return puzzleGrid.map((row: string[], r: number) =>
-            row.map((cell: string, c: number) => ({
-                value: cell === '.' ? null : parseInt(cell),
-                isGiven: cell !== '.',
-                isCorrect: true,
-                solution: parseInt(solutionGrid[r][c])
-            }))
-        );
+        // Use dynamic import for client-side
+        if (typeof window !== 'undefined') {
+            const sudoku = require('sudoku');
+            const puzzleString = sudoku.generate('easy');
+            const puzzleGrid = sudoku.board_string_to_grid(puzzleString);
+            const solutionGrid = sudoku.board_string_to_grid(sudoku.solve(puzzleString));
+            
+            const puzzle = puzzleGrid.map((row: string[], r: number) =>
+                row.map((cell: string, c: number) => ({
+                    value: cell === '.' ? null : parseInt(cell),
+                    isGiven: cell !== '.',
+                    isCorrect: true,
+                    solution: parseInt(solutionGrid[r][c])
+                }))
+            );
+            
+            // Verify puzzle has numbers
+            const hasNumbers = puzzle.some(row => row.some(cell => cell.value !== null));
+            if (hasNumbers) {
+                return puzzle;
+            }
+        }
     } catch (error) {
         console.error('Sudoku generation error:', error);
-        // Fallback: return a simple empty board
-        return Array(9).fill(null).map(() => 
-            Array(9).fill(null).map(() => ({
-                value: null,
-                isGiven: false,
-                isCorrect: true,
-                solution: null
-            }))
-        );
     }
+    
+    // Fallback: Create a simple valid puzzle manually
+    const fallbackPuzzle = [
+        [5, 3, null, null, 7, null, null, null, null],
+        [6, null, null, 1, 9, 5, null, null, null],
+        [null, 9, 8, null, null, null, null, 6, null],
+        [8, null, null, null, 6, null, null, null, 3],
+        [4, null, null, 8, null, 3, null, null, 1],
+        [7, null, null, null, 2, null, null, null, 6],
+        [null, 6, null, null, null, null, 2, 8, null],
+        [null, null, null, 4, 1, 9, null, null, 5],
+        [null, null, null, null, 8, null, null, 7, 9]
+    ];
+    
+    const solution = [
+        [5, 3, 4, 6, 7, 8, 9, 1, 2],
+        [6, 7, 2, 1, 9, 5, 3, 4, 8],
+        [1, 9, 8, 3, 4, 2, 5, 6, 7],
+        [8, 5, 9, 7, 6, 1, 4, 2, 3],
+        [4, 2, 6, 8, 5, 3, 7, 9, 1],
+        [7, 1, 3, 9, 2, 4, 8, 5, 6],
+        [9, 6, 1, 5, 3, 7, 2, 8, 4],
+        [2, 8, 7, 4, 1, 9, 6, 3, 5],
+        [3, 4, 5, 2, 8, 6, 1, 7, 9]
+    ];
+    
+    return fallbackPuzzle.map((row, r) =>
+        row.map((cell, c) => ({
+            value: cell,
+            isGiven: cell !== null,
+            isCorrect: true,
+            solution: solution[r][c]
+        }))
+    );
 };
 
 export function SudokuGame() {

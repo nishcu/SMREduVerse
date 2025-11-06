@@ -69,45 +69,55 @@ export function MemoryMatchGame() {
     }
 
     return (
-        <div className="flex flex-col h-full items-center justify-center relative">
-             <div className="grid grid-cols-2 gap-4 absolute top-4 left-4 right-4">
-                 <div className="flex items-center justify-center gap-2 rounded-md bg-background p-2">
+        <div className="flex flex-col h-full items-center justify-center relative p-4">
+             <div className="grid grid-cols-2 gap-4 absolute top-4 left-4 right-4 z-10">
+                 <div className="flex items-center justify-center gap-2 rounded-md bg-background p-2 shadow-md">
                     <Move className="h-5 w-5 text-primary" />
                     <span className="font-bold text-lg">{moves} Moves</span>
                 </div>
-                <div className="flex items-center justify-center gap-2 rounded-md bg-background p-2">
+                <div className="flex items-center justify-center gap-2 rounded-md bg-background p-2 shadow-md">
                     <Heart className="h-5 w-5 text-primary" />
                     <span className="font-bold text-lg">{cards.filter(c => c.isMatched).length / 2} / {symbols.length}</span>
                 </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-4 p-4 mt-20">
+            <div className="grid grid-cols-4 gap-3 sm:gap-4 p-4 mt-20 max-w-lg w-full">
                 {cards.map((card, index) => (
                     <motion.div
                         key={card.id}
-                        className="aspect-square rounded-lg cursor-pointer relative"
+                        className="aspect-square rounded-xl cursor-pointer relative"
+                        style={{ minWidth: '60px', minHeight: '60px' }}
                         onClick={() => handleCardClick(index)}
-                        style={{ perspective: '1000px' }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                     >
                         <motion.div
-                            className="w-full h-full rounded-lg relative"
+                            className="w-full h-full rounded-xl relative shadow-lg"
                             style={{ transformStyle: 'preserve-3d' }}
                             animate={{ rotateY: card.isFlipped || card.isMatched ? 180 : 0 }}
-                            transition={{ duration: 0.6 }}
+                            transition={{ duration: 0.5, ease: 'easeInOut' }}
                         >
-                            {/* Card back */}
+                            {/* Card back - shows question mark */}
                             <div 
-                                className="absolute inset-0 w-full h-full rounded-lg bg-primary flex items-center justify-center border-2 border-primary-foreground/20"
-                                style={{ backfaceVisibility: 'hidden', transform: 'rotateY(0deg)' }}
+                                className="absolute inset-0 w-full h-full rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center border-2 border-primary-foreground/30 shadow-inner"
+                                style={{ 
+                                    backfaceVisibility: 'hidden', 
+                                    transform: 'rotateY(0deg)',
+                                    WebkitBackfaceVisibility: 'hidden'
+                                }}
                             >
-                                <span className="text-2xl">?</span>
+                                <span className="text-4xl sm:text-5xl font-bold text-primary-foreground">?</span>
                             </div>
-                            {/* Card front */}
+                            {/* Card front - shows symbol */}
                             <div 
-                                className="absolute inset-0 w-full h-full rounded-lg bg-secondary flex items-center justify-center text-4xl border-2 border-secondary-foreground/20"
-                                style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+                                className="absolute inset-0 w-full h-full rounded-xl bg-gradient-to-br from-secondary to-secondary/80 flex items-center justify-center border-2 border-secondary-foreground/30 shadow-inner"
+                                style={{ 
+                                    backfaceVisibility: 'hidden', 
+                                    transform: 'rotateY(180deg)',
+                                    WebkitBackfaceVisibility: 'hidden'
+                                }}
                             >
-                                {card.symbol}
+                                <span className="text-5xl sm:text-6xl">{card.symbol}</span>
                             </div>
                         </motion.div>
                     </motion.div>
