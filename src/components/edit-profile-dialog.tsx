@@ -57,6 +57,7 @@ export function EditProfileDialog({ isOpen, onOpenChange, user }: EditProfileDia
   const { firebaseUser } = useAuth();
   const { toast } = useToast();
   const [isCameraOpen, setCameraOpen] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   
   const form = useForm<ProfileFormValues>({
     defaultValues: {
@@ -74,9 +75,10 @@ export function EditProfileDialog({ isOpen, onOpenChange, user }: EditProfileDia
     }
   });
 
-  // Reset form when dialog opens or user changes
+  // Reset form and state when dialog opens or user changes
   useEffect(() => {
     if (isOpen) {
+      setHasSubmitted(false);
       form.reset({
         name: user.name || '',
         username: user.username || '',
@@ -98,14 +100,18 @@ export function EditProfileDialog({ isOpen, onOpenChange, user }: EditProfileDia
   const { fields: sportFields, append: appendSport, remove: removeSport } = useFieldArray({ control: form.control, name: 'sports' as any });
   
   useEffect(() => {
-    // Only handle success/error if we have a meaningful state change (not initial render)
+    // Only handle state changes after form submission
+    if (!hasSubmitted) return;
+    
     if (state?.success === true) {
       toast({ title: 'Success', description: 'Your profile has been updated.' });
       onOpenChange(false);
-    } else if (state?.error && state.error !== null) {
+      setHasSubmitted(false);
+    } else if (state?.error && state.error !== null && state.error !== 'Invalid form data.') {
       toast({ variant: 'destructive', title: 'Error', description: state.error });
+      setHasSubmitted(false);
     }
-  }, [state, onOpenChange, toast]);
+  }, [state, onOpenChange, toast, hasSubmitted]);
 
   const handlePhotoCaptured = (dataUrl: string) => {
     form.setValue('avatarUrl', dataUrl, { shouldValidate: true });
@@ -126,6 +132,7 @@ export function EditProfileDialog({ isOpen, onOpenChange, user }: EditProfileDia
            <form
             action={async (formData: FormData) => {
                 if (!firebaseUser) return;
+                setHasSubmitted(true);
                 const idToken = await firebaseUser.getIdToken();
                 formData.set('idToken', idToken);
                 formData.delete('interests');

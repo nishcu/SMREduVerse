@@ -106,14 +106,44 @@ export async function createCommentAction(postId: string, content: string, idTok
     const decodedToken = await auth.verifyIdToken(idToken);
     uid = decodedToken.uid;
 
-    // Fetch the user's profile
-    const userProfileSnap = await db.collection('users').doc(uid).collection('profile').limit(1).get();
-    if (userProfileSnap.empty) {
-      throw new Error('User profile not found.');
+    // Fetch the user's profile - use the correct path: users/{uid}/profile/{uid}
+    const userProfileRef = db.doc(`users/${uid}/profile/${uid}`);
+    const userProfileSnap = await userProfileRef.get();
+    
+    let userProfile: any;
+    
+    if (!userProfileSnap.exists) {
+      // Profile doesn't exist, create it with basic info from Firebase token
+      userProfile = {
+        name: decodedToken.name || 'Anonymous',
+        username: decodedToken.email?.split('@')[0] || `user${uid.slice(0, 8)}`,
+        email: decodedToken.email || '',
+        avatarUrl: decodedToken.picture || '',
+        bio: '',
+        followersCount: 0,
+        followingCount: 0,
+        knowledgePoints: 0,
+        wallet: { knowledgeCoins: 0 },
+        settings: {
+          restrictSpending: false,
+          restrictChat: false,
+          restrictTalentHub: false,
+        },
+        grade: 'Not specified',
+        educationHistory: [],
+        syllabus: 'Not specified',
+        medium: 'Not specified',
+        interests: [],
+        sports: [],
+        createdAt: FieldValue.serverTimestamp(),
+      };
+      
+      await userProfileRef.set(userProfile);
+    } else {
+      userProfile = userProfileSnap.data()!;
     }
-    const userProfile = userProfileSnap.docs[0].data();
 
-    // Create comment
+    // Create comment with profile info
     const commentPayload = {
       postId,
       authorUid: uid,
