@@ -115,15 +115,18 @@ export async function getPersonalizedFeedAction(idToken: string, limit: number =
 
     // 3. Content Recommendations (from posts)
     // Get posts from followed users or trending posts
-    const postsSnapshot = followingUserIds.length > 0
-      ? await db.collection('posts')
-          .where('authorUid', 'in', followingUserIds.slice(0, 10))
-          .limit(10)
-          .get()
-      : await db.collection('posts')
-          .orderBy('likes', 'desc')
-          .limit(10)
-          .get();
+    let postsSnapshot;
+    if (followingUserIds.length > 0) {
+      postsSnapshot = await db.collection('posts')
+        .where('authorUid', 'in', followingUserIds.slice(0, 10))
+        .limit(10)
+        .get();
+    } else {
+      postsSnapshot = await db.collection('posts')
+        .orderBy('likes', 'desc')
+        .limit(10)
+        .get();
+    }
 
     postsSnapshot.docs.forEach((doc) => {
       const post = doc.data();
