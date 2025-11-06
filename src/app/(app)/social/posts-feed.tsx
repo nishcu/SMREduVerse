@@ -65,6 +65,7 @@ function PostCard({ post }: { post: Post }) {
   const { user, firebaseUser } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [likes, setLikes] = useState(post.likes);
   const [isLiked, setIsLiked] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
