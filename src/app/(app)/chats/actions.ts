@@ -9,16 +9,21 @@ function createChatId(uid1: string, uid2: string): string {
 }
 
 export async function getOrCreateChatAction(uid1: string, uid2: string) {
-    const db = getAdminDb();
-
-    if (!uid1 || !uid2) {
-        return { success: false, error: 'Both user IDs must be provided.' };
-    }
-
-    const chatId = createChatId(uid1, uid2);
-    const chatRef = db.collection('chats').doc(chatId);
-
     try {
+        const db = getAdminDb();
+
+        if (!uid1 || !uid2) {
+            return { success: false, error: 'Both user IDs must be provided.' };
+        }
+
+        // Prevent creating chat with yourself
+        if (uid1 === uid2) {
+            return { success: false, error: 'Cannot create a chat with yourself.' };
+        }
+
+        const chatId = createChatId(uid1, uid2);
+        const chatRef = db.collection('chats').doc(chatId);
+
         const chatDoc = await chatRef.get();
 
         if (chatDoc.exists) {
@@ -35,6 +40,10 @@ export async function getOrCreateChatAction(uid1: string, uid2: string) {
 
         const user1Data = user1ProfileSnap.data();
         const user2Data = user2ProfileSnap.data();
+
+        if (!user1Data || !user2Data) {
+            return { success: false, error: 'Unable to retrieve user data.' };
+        }
 
         const newChatData = {
             participants: [uid1, uid2],
@@ -67,7 +76,10 @@ export async function getOrCreateChatAction(uid1: string, uid2: string) {
 
     } catch (error: any) {
         console.error('Error in getOrCreateChatAction:', error);
-        return { success: false, error: error.message || 'An unknown error occurred.' };
+        return { 
+            success: false, 
+            error: error?.message || 'An unknown error occurred. Please try again.' 
+        };
     }
 }
 

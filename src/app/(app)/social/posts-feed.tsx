@@ -221,11 +221,33 @@ function PostCard({ post }: { post: Post }) {
   const handleStartChat = async () => {
     if (!user || !firebaseUser || isStartingChat || isOwnPost) return;
     
+    if (!user.id || !post.author.uid) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Invalid user information. Please try again.',
+      });
+      return;
+    }
+
+    // Prevent starting chat with yourself
+    if (user.id === post.author.uid) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'You cannot start a chat with yourself.',
+      });
+      return;
+    }
+    
     setIsStartingChat(true);
     try {
       const result = await getOrCreateChatAction(user.id, post.author.uid);
       if (result.success && result.chatId) {
-        router.push(`/chats/${result.chatId}`);
+        // Use setTimeout to avoid hydration issues
+        setTimeout(() => {
+          router.push(`/chats/${result.chatId}`);
+        }, 100);
         toast({
           title: 'Chat Started',
           description: `You can now chat with ${post.author.name}.`,
@@ -238,10 +260,11 @@ function PostCard({ post }: { post: Post }) {
         });
       }
     } catch (error: any) {
+      console.error('Error starting chat:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: error.message || 'Failed to start chat.',
+        description: error.message || 'Failed to start chat. Please try again.',
       });
     } finally {
       setIsStartingChat(false);

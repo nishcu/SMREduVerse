@@ -251,11 +251,33 @@ export default function DiscoverPage() {
       return;
     }
 
+    if (!user.id || !targetUserId) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Invalid user information. Please try again.',
+      });
+      return;
+    }
+
+    // Prevent starting chat with yourself
+    if (user.id === targetUserId) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'You cannot start a chat with yourself.',
+      });
+      return;
+    }
+
     setChatLoading(prev => ({ ...prev, [targetUserId]: true }));
     try {
       const result = await getOrCreateChatAction(user.id, targetUserId);
       if (result.success && result.chatId) {
-        router.push(`/chats/${result.chatId}`);
+        // Use setTimeout to avoid hydration issues
+        setTimeout(() => {
+          router.push(`/chats/${result.chatId}`);
+        }, 100);
         toast({
           title: 'Chat Started',
           description: `You can now chat with ${users.find(u => u.id === targetUserId)?.name || 'this user'}.`,
@@ -268,10 +290,11 @@ export default function DiscoverPage() {
         });
       }
     } catch (error: any) {
+      console.error('Error starting chat:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: error.message || 'Failed to start chat.',
+        description: error.message || 'Failed to start chat. Please try again.',
       });
     } finally {
       setChatLoading(prev => ({ ...prev, [targetUserId]: false }));
