@@ -8,6 +8,7 @@ import type { Chat, ChatMessage } from '@/lib/types';
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Send, Camera, Paperclip } from 'lucide-react';
@@ -65,6 +66,7 @@ function MessageBubble({
 
 export function ChatWindow({ chatId, chat }: ChatWindowProps) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [newMessage, setNewMessage] = useState('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -93,8 +95,13 @@ export function ChatWindow({ chatId, chat }: ChatWindowProps) {
     // Moderate message before sending
     const moderationResult = await moderateMessage(newMessage);
     if(moderationResult.flagForReview) {
-        // Message flagged for review - silently handle
-        // Optionally, show a toast to the user
+        // Message flagged for review - block it
+        toast({
+          variant: 'destructive',
+          title: 'Message Flagged',
+          description: 'Your message contains inappropriate content.',
+        });
+        return;
     }
 
     try {
