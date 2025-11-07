@@ -35,6 +35,23 @@ const nextConfig: NextConfig = {
     'firebase-admin',
     'bcryptjs',
   ],
+  // Optimize build output and reduce build time
+  output: 'standalone',
+  experimental: {
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+  },
+  // Reduce build time by excluding unnecessary files
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      };
+    }
+    return config;
+  },
 };
 
 export default nextConfig;
