@@ -35,8 +35,7 @@ const nextConfig: NextConfig = {
     'firebase-admin',
     'bcryptjs',
   ],
-  // Optimize build output and reduce build time
-  output: 'standalone',
+  // Optimize build to reduce build time
   experimental: {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
