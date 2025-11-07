@@ -107,7 +107,8 @@ export function ChatWindow({ chatId, chat }: ChatWindowProps) {
     try {
       const messageData = {
         authorUid: user.id,
-        content: newMessage,
+        senderId: user.id, // Add senderId for security rules compatibility
+        content: newMessage.trim(),
         timestamp: serverTimestamp(),
         type: 'text' as const,
         readBy: [user.id],
@@ -119,15 +120,27 @@ export function ChatWindow({ chatId, chat }: ChatWindowProps) {
       const chatRef = doc(db, 'chats', chatId);
       await updateDoc(chatRef, {
         lastMessage: {
-          content: newMessage,
+          content: newMessage.trim(),
           timestamp: serverTimestamp(),
           senderId: user.id
         }
+      }).catch((updateError) => {
+        // Log but don't fail if update fails - message was already sent
+        console.error('Failed to update chat lastMessage:', updateError);
       });
 
       setNewMessage('');
-    } catch (err) {
-      // Error sending message - silently fail
+    } catch (err: any) {
+      // Error sending message - show toast with better error info
+      console.error('Error sending message:', err);
+      const errorMessage = err?.message || 'Unknown error';
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err?.code === 'permission-denied' 
+          ? 'Permission denied. Please check if you are a participant in this chat.'
+          : `Failed to send message: ${errorMessage}. Please try again.`,
+      });
     }
   };
   

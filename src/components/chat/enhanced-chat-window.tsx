@@ -282,6 +282,7 @@ export function EnhancedChatWindow({ chatId, chat }: ChatWindowProps) {
     try {
       const messageData = {
         authorUid: user.id,
+        senderId: user.id, // Add senderId for security rules compatibility
         content: newMessage.trim(),
         timestamp: serverTimestamp(),
         type: 'text' as const,
@@ -298,6 +299,9 @@ export function EnhancedChatWindow({ chatId, chat }: ChatWindowProps) {
           timestamp: serverTimestamp(),
           senderId: user.id
         }
+      }).catch((updateError) => {
+        // Log but don't fail if update fails - message was already sent
+        console.error('Failed to update chat lastMessage:', updateError);
       });
 
       // Create notification for recipient (handled server-side via Firestore trigger or client-side)
@@ -309,17 +313,21 @@ export function EnhancedChatWindow({ chatId, chat }: ChatWindowProps) {
           const { createChatNotificationAction } = await import('@/app/(app)/chats/actions');
           await createChatNotificationAction(chatId, user.id, newMessage.trim(), otherParticipantId);
         } catch (error) {
-          // Error creating notification - silently fail
+          // Error creating notification - silently fail (non-critical)
         }
       }
 
       setNewMessage('');
-    } catch (err) {
-      // Error sending message - show toast instead
+    } catch (err: any) {
+      // Error sending message - show toast with better error info
+      console.error('Error sending message:', err);
+      const errorMessage = err?.message || 'Unknown error';
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to send message. Please try again.',
+        description: err?.code === 'permission-denied' 
+          ? 'Permission denied. Please check if you are a participant in this chat.'
+          : `Failed to send message: ${errorMessage}. Please try again.`,
       });
     }
   };
