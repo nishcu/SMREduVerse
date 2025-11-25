@@ -180,7 +180,8 @@ export function CreatePostDialog({
     setUploadedUrl('');
 
     const fileExtension = file.name.split('.').pop();
-    const fileName = `posts/${firebaseUser.uid}/${Date.now()}.${fileExtension}`;
+    const sanitizedFileName = selectedFile.name.replace(/\s+/g, '-');
+    const fileName = `posts/${firebaseUser.uid}/${Date.now()}-${sanitizedFileName}`;
     const storageRef = ref(storage, fileName);
     const uploadTask = uploadBytesResumable(storageRef, file);
 
