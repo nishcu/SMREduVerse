@@ -65,6 +65,7 @@ export function CreatePostDialog({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadedUrl, setUploadedUrl] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
 
@@ -89,8 +90,13 @@ export function CreatePostDialog({
         URL.revokeObjectURL(previewObjectUrlRef.current);
         previewObjectUrlRef.current = null;
       }
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+        previewObjectUrlRef.current = null;
+      }
       setPreviewUrl(null);
       setSelectedFile(null);
+      setUploadedUrl('');
       setUploadProgress(0);
     } else if (state.error) {
       toast({
@@ -138,6 +144,8 @@ export function CreatePostDialog({
     }
 
     setSelectedFile(file);
+    setUploadedUrl('');
+    form.setValue('imageUrl', '');
     
     if (previewObjectUrlRef.current) {
       URL.revokeObjectURL(previewObjectUrlRef.current);
@@ -155,6 +163,65 @@ export function CreatePostDialog({
     }
   };
 
+    startFileUpload(file);
+  };
+
+  const startFileUpload = (file: File) => {
+    if (!firebaseUser) {
+      toast({
+        variant: 'destructive',
+        title: 'Not signed in',
+        description: 'You must be logged in to upload media.',
+      });
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+    setUploadedUrl('');
+
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `posts/${firebaseUser.uid}/${Date.now()}.${fileExtension}`;
+    const storageRef = ref(storage, fileName);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(progress);
+      },
+      (error) => {
+        console.error('Upload error:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Upload Failed',
+          description: 'Failed to upload file. Please try again.',
+        });
+        setUploading(false);
+        setUploadProgress(0);
+      },
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          setUploadedUrl(downloadURL);
+          form.setValue('imageUrl', downloadURL);
+          setUploading(false);
+          setUploadProgress(100);
+        } catch (error) {
+          console.error('Error getting download URL:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Upload Failed',
+            description: 'Could not finalize upload. Please try again.',
+          });
+          setUploading(false);
+          setUploadProgress(0);
+        }
+      }
+    );
+  };
+
   const handleRemoveFile = () => {
     if (previewObjectUrlRef.current) {
       URL.revokeObjectURL(previewObjectUrlRef.current);
@@ -162,67 +229,13 @@ export function CreatePostDialog({
     }
     setSelectedFile(null);
     setPreviewUrl(null);
+    setUploadedUrl('');
     form.setValue('imageUrl', '');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  const uploadFile = async (): Promise<string | null> => {
-    if (!selectedFile || !firebaseUser) return null;
-
-    setUploading(true);
-    setUploadProgress(0);
-
-    try {
-      const fileExtension = selectedFile.name.split('.').pop();
-      const fileName = `posts/${firebaseUser.uid}/${Date.now()}.${fileExtension}`;
-      const storageRef = ref(storage, fileName);
-
-      const uploadTask = uploadBytesResumable(storageRef, selectedFile);
-
-      return new Promise((resolve, reject) => {
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setUploadProgress(progress);
-          },
-          (error) => {
-            console.error('Upload error:', error);
-            toast({
-              variant: 'destructive',
-              title: 'Upload Failed',
-              description: 'Failed to upload file. Please try again.',
-            });
-            setUploading(false);
-            reject(error);
-          },
-          async () => {
-            try {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              setUploading(false);
-              setUploadProgress(0);
-              resolve(downloadURL);
-            } catch (error) {
-              setUploading(false);
-              reject(error);
-            }
-          }
-        );
-      });
-    } catch (error) {
-      console.error('Upload error:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Upload Failed',
-        description: 'Failed to upload file. Please try again.',
-      });
-      setUploading(false);
-      return null;
-    }
-  };
-    
   if (!user) return null;
 
 
@@ -241,32 +254,25 @@ export function CreatePostDialog({
             <form
                 action={async (formData: FormData) => {
                     if (!firebaseUser) return;
-                    
+
                     if (uploading) {
                         toast({
-                            title: 'Uploading media',
+                            title: 'Upload in progress',
                             description: 'Please wait for the upload to finish before posting.',
                         });
                         return;
                     }
 
-                    // Upload file if selected
-                    let fileUrl = form.getValues('imageUrl');
+                    let fileUrl = form.getValues('imageUrl') || uploadedUrl;
                     if (selectedFile && !fileUrl) {
-                        const uploadedUrl = await uploadFile();
-                        if (uploadedUrl) {
-                            fileUrl = uploadedUrl;
-                            form.setValue('imageUrl', fileUrl);
-                        } else {
-                            toast({
-                                variant: 'destructive',
-                                title: 'Upload Failed',
-                                description: 'Could not upload file. Please try again.',
-                            });
-                            return;
-                        }
+                        toast({
+                            variant: 'destructive',
+                            title: 'Upload required',
+                            description: 'Please wait until the media upload completes before posting.',
+                        });
+                        return;
                     }
-                    
+
                     const idToken = await firebaseUser.getIdToken();
                     formData.set('idToken', idToken);
                     formData.set('imageUrl', fileUrl || '');
@@ -382,12 +388,14 @@ export function CreatePostDialog({
                                             }
                                             setPreviewUrl(e.target.value);
                                             setSelectedFile(null);
+                                            setUploadedUrl(e.target.value);
                                         } else {
                                             if (previewObjectUrlRef.current) {
                                                 URL.revokeObjectURL(previewObjectUrlRef.current);
                                                 previewObjectUrlRef.current = null;
                                             }
                                             setPreviewUrl(null);
+                                            setUploadedUrl('');
                                         }
                                     }}
                                 />
