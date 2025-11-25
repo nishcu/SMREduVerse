@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (user) {
         // Set Firebase user immediately for instant UI update
         setFirebaseUser(user);
-        setLoading(false); // Stop loading immediately - don't wait for profile
+        // Keep loading true until profile is loaded to prevent premature redirects
         
         // Store idToken in a cookie (non-blocking)
         user.getIdToken().then(token => {
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Silent fail - token will be fetched when needed
         });
         
-        // Fetch profile in background (non-blocking)
+        // Fetch profile - keep loading true until this completes
         const userRef = doc(db, `users/${user.uid}/profile/${user.uid}`);
         
         try {
@@ -57,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           if (userSnap.exists()) {
             setUser({ id: user.uid, ...userSnap.data() } as User);
+            setLoading(false); // Profile loaded, stop loading
           } else {
              // Check if the new user is the designated super admin
             const isSuperAdmin = user.uid === 'hJ1yy9A2WDZWPM9RPYquq8ibCp22';
@@ -90,18 +91,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               sports: [],
             };
             
-            // Create profile in background - don't await
-            setDoc(userRef, { id: user.uid, ...newUser, createdAt: serverTimestamp() }).catch(err => {
+            // Create profile - await to ensure it's created before setting user
+            try {
+              await setDoc(userRef, { id: user.uid, ...newUser, createdAt: serverTimestamp() });
+            } catch (err) {
               console.error("Error creating user profile:", err);
-            });
+            }
             
-            // Set user immediately with new profile data
+            // Set user with new profile data
             setUser({ id: user.uid, ...newUser });
+            setLoading(false); // Profile created, stop loading
           }
         } catch (error: any) {
             console.error("Error fetching or creating user profile:", error);
-            // Don't block login if profile creation fails, but log the error
-            // User can still use the app with basic Firebase user data
+            // If profile fetch/creation fails, still set loading to false to prevent infinite loading
+            // But create a minimal user object so the app can function
+            setUser({ 
+              id: user.uid,
+              name: user.displayName || user.email?.split('@')[0] || 'User',
+              username: user.email?.split('@')[0] || `user${Date.now()}`,
+              email: user.email || '',
+              avatarUrl: user.photoURL || '',
+              bio: '',
+              isSuperAdmin: false,
+              followersCount: 0,
+              followingCount: 0,
+              createdAt: new Date().toISOString(),
+              referralCode: '',
+              settings: {
+                restrictSpending: false,
+                restrictChat: false,
+                restrictTalentHub: false,
+              },
+              wallet: { knowledgeCoins: 0 },
+              knowledgePoints: 0,
+              grade: '',
+              educationHistory: [],
+              syllabus: '',
+              medium: '',
+              interests: [],
+              sports: [],
+            } as User);
+            setLoading(false);
         }
       } else {
         setFirebaseUser(null);

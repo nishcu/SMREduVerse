@@ -92,7 +92,8 @@ export function ProfileHeader({ user: profileUser }: { user: User }) {
   };
 
   const handleStartChat = async () => {
-    if (!currentUser) {
+    // Ensure both firebaseUser and currentUser are available
+    if (!firebaseUser || !currentUser) {
       toast({
         variant: 'destructive',
         title: 'Not signed in',
@@ -115,11 +116,13 @@ export function ProfileHeader({ user: profileUser }: { user: User }) {
       const result = await getOrCreateChatAction(currentUser.id, profileUser.id);
 
       if (result.success && result.chatId) {
-        // small delay ensures chat exists before navigation
+        // Navigate immediately - the layout will handle auth state properly
+        // The delay ensures chat exists in Firestore before navigation
         setTimeout(() => {
           router.push(`/chats/${result.chatId}`);
-        }, 100);
+        }, 150);
       } else {
+        setIsStartingChat(false);
         toast({
           variant: 'destructive',
           title: 'Error',
@@ -127,13 +130,12 @@ export function ProfileHeader({ user: profileUser }: { user: User }) {
         });
       }
     } catch (error: any) {
+      setIsStartingChat(false);
       toast({
         variant: 'destructive',
         title: 'Error',
         description: error?.message || 'Could not start chat.',
       });
-    } finally {
-      setIsStartingChat(false);
     }
   };
 

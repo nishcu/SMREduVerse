@@ -48,7 +48,7 @@ import {
 import { Logo } from '@/components/logo';
 import { useAuth } from '@/hooks/use-auth';
 import { UserNav } from '@/components/user-nav';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { NotificationDropdown } from '@/components/notification-dropdown';
 import { Button } from '@/components/ui/button';
 import { GlobalSearch } from '@/components/global-search';
@@ -108,24 +108,51 @@ const adminNavItems = [
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, logout, loading } = useAuth();
+  const { user, firebaseUser, logout, loading } = useAuth();
   const router = useRouter();
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
   
   // Track user online status
   usePresence();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/');
+    // Mark that we've checked auth state at least once
+    if (!loading) {
+      setHasCheckedAuth(true);
     }
-  }, [user, loading, router]);
+  }, [loading]);
 
-  if (loading || !user) {
+  useEffect(() => {
+    // Only redirect if:
+    // 1. Auth state is fully determined (not loading)
+    // 2. We've checked auth at least once (prevents redirect during initial mount/navigation)
+    // 3. User is definitely not authenticated (no firebaseUser and no user)
+    // 4. We're not already on the landing page
+    // Don't redirect if we're on a protected route - wait for auth to load
+    if (hasCheckedAuth && !loading && !firebaseUser && !user && pathname !== '/') {
+      // Small delay to allow navigation to complete and auth to stabilize
+      const timeoutId = setTimeout(() => {
+        // Double-check auth state before redirecting
+        if (!firebaseUser && !user) {
+          router.push('/');
+        }
+      }, 200);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [user, firebaseUser, loading, router, hasCheckedAuth, pathname]);
+
+  // Show loading if auth is loading OR if firebaseUser exists but profile is still loading
+  if (loading || (firebaseUser && !user)) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <p>Loading...</p>
       </div>
     );
+  }
+
+  // If no firebaseUser and no user after loading, redirect (handled by useEffect above)
+  if (!firebaseUser && !user) {
+    return null;
   }
   
   // Replace 'me' with actual user id
