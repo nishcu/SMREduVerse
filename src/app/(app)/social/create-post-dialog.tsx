@@ -120,15 +120,32 @@ export function CreatePostDialog({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
+    // Validate file type - support more video formats
     const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    const validVideoTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
+    const validVideoTypes = [
+      'video/mp4', 
+      'video/webm', 
+      'video/ogg', 
+      'video/quicktime',
+      'video/x-msvideo', // AVI
+      'video/x-matroska', // MKV
+      'video/3gpp', // 3GP
+      'video/x-ms-wmv', // WMV
+    ];
     
-    if (!validImageTypes.includes(file.type) && !validVideoTypes.includes(file.type)) {
+    // Also check file extension as fallback (some browsers don't set MIME type correctly)
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    const validImageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    const validVideoExtensions = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', '3gp', 'wmv'];
+    
+    const isValidImageType = validImageTypes.includes(file.type) || (fileExtension && validImageExtensions.includes(fileExtension));
+    const isValidVideoType = validVideoTypes.includes(file.type) || (fileExtension && validVideoExtensions.includes(fileExtension));
+    
+    if (!isValidImageType && !isValidVideoType) {
       toast({
         variant: 'destructive',
         title: 'Invalid File Type',
-        description: 'Please select an image (JPEG, PNG, GIF, WebP) or video (MP4, WebM, OGG, MOV) file.',
+        description: 'Please select an image (JPEG, PNG, GIF, WebP) or video (MP4, WebM, OGG, MOV, AVI, MKV) file.',
       });
       return;
     }
@@ -179,8 +196,9 @@ export function CreatePostDialog({
     setUploadProgress(0);
     setUploadedUrl('');
 
-    const fileExtension = file.name.split('.').pop();
-    const sanitizedFileName = selectedFile.name.replace(/\s+/g, '-');
+    // Sanitize filename - remove spaces and special characters
+    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '-').replace(/-+/g, '-');
+    const fileExtension = file.name.split('.').pop()?.toLowerCase() || 'bin';
     const fileName = `posts/${firebaseUser.uid}/${Date.now()}-${sanitizedFileName}`;
     const storageRef = ref(storage, fileName);
     const uploadTask = uploadBytesResumable(storageRef, file);
@@ -193,13 +211,28 @@ export function CreatePostDialog({
       },
       (error) => {
         console.error('Upload error:', error);
+        let errorMessage = 'Failed to upload file. Please try again.';
+        if (error.code === 'storage/unauthorized') {
+          errorMessage = 'You do not have permission to upload files. Please check your account permissions.';
+        } else if (error.code === 'storage/canceled') {
+          errorMessage = 'Upload was canceled.';
+        } else if (error.code === 'storage/unknown') {
+          errorMessage = 'An unknown error occurred. Please check your connection and try again.';
+        }
         toast({
           variant: 'destructive',
           title: 'Upload Failed',
-          description: 'Failed to upload file. Please try again.',
+          description: errorMessage,
         });
         setUploading(false);
         setUploadProgress(0);
+        // Clean up on error
+        setSelectedFile(null);
+        setPreviewUrl(null);
+        if (previewObjectUrlRef.current) {
+          URL.revokeObjectURL(previewObjectUrlRef.current);
+          previewObjectUrlRef.current = null;
+        }
       },
       async () => {
         try {
