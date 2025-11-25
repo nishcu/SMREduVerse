@@ -35,6 +35,7 @@ import { useState, useEffect } from 'react';
 import { CommentDialog } from '@/components/comment-dialog';
 import { toggleLikeAction, checkLikedAction, getLikedUsersAction, toggleFollowAction, checkFollowingAction } from './actions';
 import { getOrCreateChatAction } from '@/app/(app)/chats/actions';
+import { useRouter } from 'next/navigation';
 
 function PostSkeleton() {
   return (
@@ -63,6 +64,7 @@ function PostSkeleton() {
 function PostCard({ post }: { post: Post }) {
   const { user, firebaseUser } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
   const [likes, setLikes] = useState(post.likes);
   const [isLiked, setIsLiked] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -243,8 +245,8 @@ function PostCard({ post }: { post: Post }) {
     try {
       const result = await getOrCreateChatAction(user.id, post.author.uid);
       if (result.success && result.chatId) {
-        // Use window.location.href to avoid hydration issues
-        window.location.href = `/chats/${result.chatId}`;
+        router.push(`/chats/${result.chatId}`);
+        setIsStartingChat(false);
       } else {
         setIsStartingChat(false);
         toast({
