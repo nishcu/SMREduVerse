@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
@@ -11,6 +11,7 @@ export const FocusTapsGame = ({ onComplete }: { onComplete: () => void }) => {
     const [score, setScore] = useState(0);
     const [timeLeft, setTimeLeft] = useState(30);
     const [gameStarted, setGameStarted] = useState(false);
+    const targetTimeoutsRef = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
     // Reset when component remounts (new key)
     useEffect(() => {
@@ -28,26 +29,53 @@ export const FocusTapsGame = ({ onComplete }: { onComplete: () => void }) => {
         }, 1000);
 
         const targetInterval = setInterval(() => {
-            setTargets(prev => [
-                ...prev,
-                { id: Date.now(), x: Math.random() * 90, y: Math.random() * 90 }
-            ]);
-            // Remove old targets
-            setTimeout(() => setTargets(prev => prev.slice(1)), 2000);
-        }, 800);
+            setTargets(prev => {
+                const nextTargets = [...prev];
+                if (nextTargets.length >= 6) {
+                    const removed = nextTargets.shift();
+                    if (removed && targetTimeoutsRef.current[removed.id]) {
+                        clearTimeout(targetTimeoutsRef.current[removed.id]);
+                        delete targetTimeoutsRef.current[removed.id];
+                    }
+                }
+
+                const id = Date.now();
+                nextTargets.push({
+                    id,
+                    x: Math.random() * 80 + 10,
+                    y: Math.random() * 80 + 10
+                });
+
+                const timeoutId = setTimeout(() => {
+                    setTargets(current => current.filter(target => target.id !== id));
+                    delete targetTimeoutsRef.current[id];
+                }, 1800);
+
+                targetTimeoutsRef.current[id] = timeoutId;
+                return nextTargets;
+            });
+        }, 600);
 
         return () => {
             clearInterval(timer);
             clearInterval(targetInterval);
+            Object.values(targetTimeoutsRef.current).forEach(timeoutId => clearTimeout(timeoutId));
+            targetTimeoutsRef.current = {};
         };
     }, [gameStarted, timeLeft]);
 
-    const handleTargetClick = (id: number) => {
+    const handleTargetClick = useCallback((id: number) => {
         setTargets(prev => prev.filter(target => target.id !== id));
         setScore(prev => prev + 1);
-    };
+        if (targetTimeoutsRef.current[id]) {
+            clearTimeout(targetTimeoutsRef.current[id]);
+            delete targetTimeoutsRef.current[id];
+        }
+    }, []);
 
     const startGame = () => {
+        Object.values(targetTimeoutsRef.current).forEach(timeoutId => clearTimeout(timeoutId));
+        targetTimeoutsRef.current = {};
         setScore(0);
         setTimeLeft(30);
         setTargets([]);
@@ -100,26 +128,27 @@ export const FocusTapsGame = ({ onComplete }: { onComplete: () => void }) => {
                 <div className="text-lg">Time Left: <span className="font-bold text-primary">{timeLeft}s</span></div>
                 <div className="text-lg">Score: <span className="font-bold text-primary">{score}</span></div>
             </div>
-            <div className="relative flex-grow bg-muted rounded-lg overflow-hidden" style={{ touchAction: 'none' }}>
+            <div className="relative flex-grow bg-muted rounded-lg overflow-hidden" style={{ touchAction: 'manipulation' }}>
                 {targets.map(target => (
                     <motion.div
                         key={target.id}
-                        initial={{ scale: 0, opacity: 0 }}
+                        initial={{ scale: 0.6, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                        className="absolute w-16 h-16 bg-primary rounded-full cursor-pointer hover:scale-110 active:scale-95 transition-transform z-10 flex items-center justify-center shadow-lg"
+                        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                        className="absolute w-14 h-14 bg-primary/90 rounded-full cursor-pointer hover:scale-105 active:scale-95 transition-transform z-10 flex items-center justify-center shadow-lg border border-white/40"
                         style={{ 
-                            left: `${target.x}%`, 
+                            left: `${target.x}%`,
                             top: `${target.y}%`,
-                            transform: 'translate(-50%, -50%)'
+                            transform: 'translate(-50%, -50%)',
+                            pointerEvents: 'auto'
                         }}
-                        onClick={(e) => {
+                        onPointerDown={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             handleTargetClick(target.id);
                         }}
-                        onTouchStart={(e) => {
+                        onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             handleTargetClick(target.id);

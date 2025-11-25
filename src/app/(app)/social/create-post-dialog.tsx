@@ -37,6 +37,8 @@ import {
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
+const MAX_UPLOAD_SIZE_MB = 100;
+
 const subjects = [
     "Mathematics", "Science", "English", "History", "Geography", "Biology", 
     "Chemistry", "Physics", "Computer Science", "Art", "Music", "Mythology", 
@@ -112,11 +114,11 @@ export function CreatePostDialog({
     }
 
     // Validate file size (max 50MB)
-    if (file.size > 50 * 1024 * 1024) {
+    if (file.size > MAX_UPLOAD_SIZE_MB * 1024 * 1024) {
       toast({
         variant: 'destructive',
         title: 'File Too Large',
-        description: 'Please select a file smaller than 50MB.',
+        description: `Please select a file smaller than ${MAX_UPLOAD_SIZE_MB}MB.`,
       });
       return;
     }

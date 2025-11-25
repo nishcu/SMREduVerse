@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover';
-import { searchAction } from '@/app/(app)/actions';
 import { Loader2, Search, Users, BookOpen, MessageSquare, Trophy, ShoppingBag, School, Target, Zap, X } from 'lucide-react';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -33,6 +32,7 @@ export function GlobalSearch() {
     const router = useRouter();
     const inputRef = useRef<HTMLInputElement>(null);
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const abortControllerRef = useRef<AbortController | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
     // Close popover on navigation
@@ -43,6 +43,14 @@ export function GlobalSearch() {
             setResults(null);
         }
     }, [pathname]);
+
+    useEffect(() => {
+        return () => {
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+        };
+    }, []);
 
     // Handle click outside
     useEffect(() => {
@@ -64,17 +72,40 @@ export function GlobalSearch() {
             return;
         }
 
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
         setLoading(true);
         try {
-            const searchResults = await searchAction(searchQuery.trim());
-            setResults(searchResults);
-        } catch (error) {
-            console.error('Search error:', error);
-            setResults(null);
+            const response = await fetch('/api/search', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ query: searchQuery.trim() }),
+                signal: controller.signal,
+            });
+
+            if (!response.ok) {
+                throw new Error('Search request failed');
+            }
+
+            const data = await response.json();
+            setResults(data.results || null);
+        } catch (error: any) {
+            if (error?.name !== 'AbortError') {
+                console.error('Search error:', error);
+                setResults(null);
+            }
         } finally {
-            setLoading(false);
+            if (!controller.signal.aborted) {
+                setLoading(false);
+            }
         }
-    }, []); // Empty deps - searchAction is stable
+    }, []);
 
     // Debounced search function
     const handleSearch = useCallback((searchQuery: string) => {
