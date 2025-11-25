@@ -6,13 +6,25 @@ import { revalidatePath } from 'next/cache';
 import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 
-const PostSchema = z.object({
-  content: z.string().min(1, 'Post content cannot be empty.').max(280),
-  imageUrl: z.string().url().optional().or(z.literal('')),
-  postType: z.enum(['text', 'image', 'video', 'question']),
-  subject: z.string().min(1, 'Please select a subject.'),
-  idToken: z.string(),
-});
+const PostSchema = z
+  .object({
+    content: z.string().max(280, 'Post content cannot exceed 280 characters.'),
+    imageUrl: z.string().url().optional().or(z.literal('')),
+    postType: z.enum(['text', 'image', 'video', 'question']),
+    subject: z.string().min(1, 'Please select a subject.'),
+    idToken: z.string(),
+  })
+  .refine(
+    (data) => {
+      const hasContent = data.content?.trim().length > 0;
+      const hasMedia = data.imageUrl && data.imageUrl.trim().length > 0;
+      return hasContent || hasMedia;
+    },
+    {
+      message: 'Please add text or upload an image/video.',
+      path: ['content'],
+    }
+  );
 
 export async function createPostAction(prevState: any, formData: FormData) {
   const auth = getAdminAuth();

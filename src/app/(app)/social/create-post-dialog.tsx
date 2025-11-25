@@ -66,6 +66,7 @@ export function CreatePostDialog({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewObjectUrlRef = useRef<string | null>(null);
 
   const form = useForm({
     defaultValues: {
@@ -84,6 +85,10 @@ export function CreatePostDialog({
       });
       onOpenChange(false);
       form.reset();
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+        previewObjectUrlRef.current = null;
+      }
       setPreviewUrl(null);
       setSelectedFile(null);
       setUploadProgress(0);
@@ -95,6 +100,15 @@ export function CreatePostDialog({
       });
     }
   }, [state, toast, onOpenChange, form]);
+
+  useEffect(() => {
+    return () => {
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+        previewObjectUrlRef.current = null;
+      }
+    };
+  }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -125,12 +139,13 @@ export function CreatePostDialog({
 
     setSelectedFile(file);
     
-    // Create preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreviewUrl(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current);
+      previewObjectUrlRef.current = null;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    previewObjectUrlRef.current = objectUrl;
+    setPreviewUrl(objectUrl);
 
     // Auto-set post type based on file type
     if (validImageTypes.includes(file.type)) {
@@ -141,6 +156,10 @@ export function CreatePostDialog({
   };
 
   const handleRemoveFile = () => {
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current);
+      previewObjectUrlRef.current = null;
+    }
     setSelectedFile(null);
     setPreviewUrl(null);
     form.setValue('imageUrl', '');
@@ -223,6 +242,14 @@ export function CreatePostDialog({
                 action={async (formData: FormData) => {
                     if (!firebaseUser) return;
                     
+                    if (uploading) {
+                        toast({
+                            title: 'Uploading media',
+                            description: 'Please wait for the upload to finish before posting.',
+                        });
+                        return;
+                    }
+
                     // Upload file if selected
                     let fileUrl = form.getValues('imageUrl');
                     if (selectedFile && !fileUrl) {
@@ -243,7 +270,7 @@ export function CreatePostDialog({
                     const idToken = await firebaseUser.getIdToken();
                     formData.set('idToken', idToken);
                     formData.set('imageUrl', fileUrl || '');
-                    formAction(formData);
+                    await formAction(formData);
                 }}
                 className="space-y-4"
             >
@@ -349,9 +376,17 @@ export function CreatePostDialog({
                                     onChange={(e) => {
                                         field.onChange(e);
                                         if (e.target.value) {
+                                            if (previewObjectUrlRef.current) {
+                                                URL.revokeObjectURL(previewObjectUrlRef.current);
+                                                previewObjectUrlRef.current = null;
+                                            }
                                             setPreviewUrl(e.target.value);
                                             setSelectedFile(null);
                                         } else {
+                                            if (previewObjectUrlRef.current) {
+                                                URL.revokeObjectURL(previewObjectUrlRef.current);
+                                                previewObjectUrlRef.current = null;
+                                            }
                                             setPreviewUrl(null);
                                         }
                                     }}
@@ -413,7 +448,7 @@ export function CreatePostDialog({
 
                 <DialogFooter>
                     <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>Cancel</Button>
-                    <Button type="submit" disabled={isPending || !firebaseUser}>
+                    <Button type="submit" disabled={isPending || uploading || !firebaseUser}>
                         {isPending ? (
                             <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
