@@ -723,8 +723,9 @@ export function PostsFeed({ feedType = 'for-you' }: PostsFeedProps) {
   }, [feedType, fetchMoreForYou]);
 
   const feedError = error;
+  const showLoadingState = loading && posts.length === 0;
 
-  if (isLoading) {
+  if (showLoadingState) {
     return (
       <div className="space-y-6">
         <PostSkeleton />
