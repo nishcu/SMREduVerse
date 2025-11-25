@@ -100,17 +100,30 @@ export const FocusTapsGame = ({ onComplete }: { onComplete: () => void }) => {
                 <div className="text-lg">Time Left: <span className="font-bold text-primary">{timeLeft}s</span></div>
                 <div className="text-lg">Score: <span className="font-bold text-primary">{score}</span></div>
             </div>
-            <div className="relative flex-grow bg-muted rounded-lg overflow-hidden">
+            <div className="relative flex-grow bg-muted rounded-lg overflow-hidden" style={{ touchAction: 'none' }}>
                 {targets.map(target => (
                     <motion.div
                         key={target.id}
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        exit={{ scale: 0 }}
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
                         transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                        className="absolute w-12 h-12 bg-primary rounded-full cursor-pointer"
-                        style={{ left: `${target.x}%`, top: `${target.y}%` }}
-                        onPointerDown={() => handleTargetClick(target.id)}
+                        className="absolute w-16 h-16 bg-primary rounded-full cursor-pointer hover:scale-110 active:scale-95 transition-transform z-10 flex items-center justify-center shadow-lg"
+                        style={{ 
+                            left: `${target.x}%`, 
+                            top: `${target.y}%`,
+                            transform: 'translate(-50%, -50%)'
+                        }}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleTargetClick(target.id);
+                        }}
+                        onTouchStart={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleTargetClick(target.id);
+                        }}
                     />
                 ))}
             </div>

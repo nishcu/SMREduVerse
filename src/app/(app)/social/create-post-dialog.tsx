@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useActionState } from 'react';
+import { useEffect, useActionState, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import {
@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select';
 import { createPostAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Upload, X, Image as ImageIcon, Video } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -34,6 +34,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 const subjects = [
     "Mathematics", "Science", "English", "History", "Geography", "Biology", 
@@ -57,6 +59,11 @@ export function CreatePostDialog({
   const { user, getInitials, firebaseUser } = useAuth();
   const [state, formAction, isPending] = useActionState(createPostAction, initialState);
   const { toast } = useToast();
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm({
     defaultValues: {
@@ -75,6 +82,9 @@ export function CreatePostDialog({
       });
       onOpenChange(false);
       form.reset();
+      setPreviewUrl(null);
+      setSelectedFile(null);
+      setUploadProgress(0);
     } else if (state.error) {
       toast({
         variant: 'destructive',
@@ -83,6 +93,114 @@ export function CreatePostDialog({
       });
     }
   }, [state, toast, onOpenChange, form]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const validVideoTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
+    
+    if (!validImageTypes.includes(file.type) && !validVideoTypes.includes(file.type)) {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid File Type',
+        description: 'Please select an image (JPEG, PNG, GIF, WebP) or video (MP4, WebM, OGG, MOV) file.',
+      });
+      return;
+    }
+
+    // Validate file size (max 50MB)
+    if (file.size > 50 * 1024 * 1024) {
+      toast({
+        variant: 'destructive',
+        title: 'File Too Large',
+        description: 'Please select a file smaller than 50MB.',
+      });
+      return;
+    }
+
+    setSelectedFile(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPreviewUrl(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Auto-set post type based on file type
+    if (validImageTypes.includes(file.type)) {
+      form.setValue('postType', 'image');
+    } else if (validVideoTypes.includes(file.type)) {
+      form.setValue('postType', 'video');
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    form.setValue('imageUrl', '');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const uploadFile = async (): Promise<string | null> => {
+    if (!selectedFile || !firebaseUser) return null;
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const fileExtension = selectedFile.name.split('.').pop();
+      const fileName = `posts/${firebaseUser.uid}/${Date.now()}.${fileExtension}`;
+      const storageRef = ref(storage, fileName);
+
+      const uploadTask = uploadBytesResumable(storageRef, selectedFile);
+
+      return new Promise((resolve, reject) => {
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(progress);
+          },
+          (error) => {
+            console.error('Upload error:', error);
+            toast({
+              variant: 'destructive',
+              title: 'Upload Failed',
+              description: 'Failed to upload file. Please try again.',
+            });
+            setUploading(false);
+            reject(error);
+          },
+          async () => {
+            try {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              setUploading(false);
+              setUploadProgress(0);
+              resolve(downloadURL);
+            } catch (error) {
+              setUploading(false);
+              reject(error);
+            }
+          }
+        );
+      });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Upload Failed',
+        description: 'Failed to upload file. Please try again.',
+      });
+      setUploading(false);
+      return null;
+    }
+  };
     
   if (!user) return null;
 
@@ -102,8 +220,27 @@ export function CreatePostDialog({
             <form
                 action={async (formData: FormData) => {
                     if (!firebaseUser) return;
+                    
+                    // Upload file if selected
+                    let fileUrl = form.getValues('imageUrl');
+                    if (selectedFile && !fileUrl) {
+                        const uploadedUrl = await uploadFile();
+                        if (uploadedUrl) {
+                            fileUrl = uploadedUrl;
+                            form.setValue('imageUrl', fileUrl);
+                        } else {
+                            toast({
+                                variant: 'destructive',
+                                title: 'Upload Failed',
+                                description: 'Could not upload file. Please try again.',
+                            });
+                            return;
+                        }
+                    }
+                    
                     const idToken = await firebaseUser.getIdToken();
                     formData.set('idToken', idToken);
+                    formData.set('imageUrl', fileUrl || '');
                     formAction(formData);
                 }}
                 className="space-y-4"
@@ -139,9 +276,85 @@ export function CreatePostDialog({
                     name="imageUrl"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Image URL (Optional)</FormLabel>
+                        <FormLabel>Image or Video (Optional)</FormLabel>
                         <FormControl>
-                            <Input placeholder="https://example.com/image.png" {...field} />
+                            <div className="space-y-2">
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*,video/*"
+                                    onChange={handleFileSelect}
+                                    className="hidden"
+                                    id="file-upload"
+                                    disabled={uploading}
+                                />
+                                {!previewUrl && !uploading && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="w-full"
+                                    >
+                                        <Upload className="mr-2 h-4 w-4" />
+                                        Choose Image or Video
+                                    </Button>
+                                )}
+                                {uploading && (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            <span className="text-sm">Uploading... {Math.round(uploadProgress)}%</span>
+                                        </div>
+                                        <div className="w-full bg-secondary rounded-full h-2">
+                                            <div
+                                                className="bg-primary h-2 rounded-full transition-all"
+                                                style={{ width: `${uploadProgress}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                {previewUrl && !uploading && (
+                                    <div className="relative">
+                                        {selectedFile?.type.startsWith('image/') ? (
+                                            <img
+                                                src={previewUrl}
+                                                alt="Preview"
+                                                className="w-full h-48 object-cover rounded-lg border"
+                                            />
+                                        ) : (
+                                            <video
+                                                src={previewUrl}
+                                                controls
+                                                className="w-full h-48 object-cover rounded-lg border"
+                                            />
+                                        )}
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            size="sm"
+                                            className="absolute top-2 right-2"
+                                            onClick={handleRemoveFile}
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                )}
+                                <Input
+                                    {...field}
+                                    value={field.value || ''}
+                                    placeholder="Or enter image/video URL"
+                                    className="mt-2"
+                                    onChange={(e) => {
+                                        field.onChange(e);
+                                        if (e.target.value) {
+                                            setPreviewUrl(e.target.value);
+                                            setSelectedFile(null);
+                                        } else {
+                                            setPreviewUrl(null);
+                                        }
+                                    }}
+                                />
+                            </div>
                         </FormControl>
                         <FormMessage />
                         </FormItem>

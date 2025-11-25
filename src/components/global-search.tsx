@@ -74,7 +74,7 @@ export function GlobalSearch() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, []); // Empty deps - searchAction is stable
 
     // Debounced search function
     const handleSearch = useCallback((searchQuery: string) => {
