@@ -575,10 +575,21 @@ function PostCard({ post }: { post: Post }) {
 
 const BATCH_SIZE = 8;
 
-const mapDocToPost = (doc: QueryDocumentSnapshot<DocumentData>): Post => ({
-  id: doc.id,
-  ...(doc.data() as Omit<Post, 'id'>),
-});
+const mapDocToPost = (doc: QueryDocumentSnapshot<DocumentData>): Post => {
+  const data = doc.data();
+  // Ensure author object exists, fallback to authorUid if needed
+  const author = data.author || {
+    uid: data.authorUid || 'unknown',
+    name: 'Unknown user',
+    avatarUrl: '',
+  };
+  return {
+    id: doc.id,
+    ...data,
+    author,
+    authorUid: author.uid,
+  } as Post;
+};
 
 interface PostsFeedProps {
   feedType?: 'for-you' | 'following' | 'trending';
@@ -630,14 +641,24 @@ export function PostsFeed({ feedType = 'for-you' }: PostsFeedProps) {
         const { getFollowingFeedAction } = await import('./actions');
         const result = await getFollowingFeedAction(idToken, 20);
         if (result.success) {
-          const formattedPosts = result.posts.map((post: any) => ({
-            ...post,
-            createdAt: post.createdAt
-              ? typeof post.createdAt === 'string'
-                ? { toDate: () => new Date(post.createdAt) }
-                : post.createdAt
-              : null,
-          }));
+          const formattedPosts = result.posts.map((post: any) => {
+            // Ensure author object exists
+            const author = post.author || {
+              uid: post.authorUid || 'unknown',
+              name: 'Unknown user',
+              avatarUrl: '',
+            };
+            return {
+              ...post,
+              author,
+              authorUid: author.uid,
+              createdAt: post.createdAt
+                ? typeof post.createdAt === 'string'
+                  ? { toDate: () => new Date(post.createdAt) }
+                  : post.createdAt
+                : null,
+            };
+          });
           setPosts(formattedPosts as Post[]);
         } else {
           setError(new Error(result.error || 'Failed to load feed'));
@@ -646,14 +667,24 @@ export function PostsFeed({ feedType = 'for-you' }: PostsFeedProps) {
         const { getTrendingFeedAction } = await import('./actions');
         const result = await getTrendingFeedAction(20);
         if (result.success) {
-          const formattedPosts = result.posts.map((post: any) => ({
-            ...post,
-            createdAt: post.createdAt
-              ? typeof post.createdAt === 'string'
-                ? { toDate: () => new Date(post.createdAt) }
-                : post.createdAt
-              : null,
-          }));
+          const formattedPosts = result.posts.map((post: any) => {
+            // Ensure author object exists
+            const author = post.author || {
+              uid: post.authorUid || 'unknown',
+              name: 'Unknown user',
+              avatarUrl: '',
+            };
+            return {
+              ...post,
+              author,
+              authorUid: author.uid,
+              createdAt: post.createdAt
+                ? typeof post.createdAt === 'string'
+                  ? { toDate: () => new Date(post.createdAt) }
+                  : post.createdAt
+                : null,
+            };
+          });
           setPosts(formattedPosts as Post[]);
         } else {
           setError(new Error(result.error || 'Failed to load feed'));

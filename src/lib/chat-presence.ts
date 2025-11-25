@@ -23,20 +23,30 @@ export function usePresence() {
       if (user) {
         const userStatusRef = doc(db, 'presence', user.uid);
         
-        // Set user as online
-        await setDoc(userStatusRef, {
-          status: 'online',
-          lastSeen: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        }, { merge: true });
-
-        // Set user as offline when they disconnect
-        const markOffline = async () => {
+        try {
+          // Set user as online
           await setDoc(userStatusRef, {
-            status: 'offline',
+            status: 'online',
             lastSeen: serverTimestamp(),
             updatedAt: serverTimestamp(),
           }, { merge: true });
+        } catch (error) {
+          // Silently fail if permissions are missing - presence is optional
+          console.debug('Could not update presence status:', error);
+        }
+
+        // Set user as offline when they disconnect
+        const markOffline = async () => {
+          try {
+            await setDoc(userStatusRef, {
+              status: 'offline',
+              lastSeen: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            }, { merge: true });
+          } catch (error) {
+            // Silently fail if permissions are missing
+            console.debug('Could not mark user offline:', error);
+          }
         };
 
         presenceRef.current = markOffline;
