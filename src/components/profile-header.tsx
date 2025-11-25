@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { User } from '@/lib/types';
@@ -21,8 +21,8 @@ export function ProfileHeader({ user: profileUser }: { user: User }) {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
   const [isEditOpen, setEditOpen] = useState(false);
+  const [isStartingChat, setIsStartingChat] = useState(false);
 
   const isOwnProfile = currentUser?.id === profileUser.id;
   const pathParts = pathname.split('/');
@@ -91,19 +91,50 @@ export function ProfileHeader({ user: profileUser }: { user: User }) {
     }
   };
 
-  const handleStartChat = () => {
+  const handleStartChat = async () => {
     if (!currentUser) {
-      toast({ variant: 'destructive', title: 'Not signed in', description: 'You must be logged in to start a chat.' });
+      toast({
+        variant: 'destructive',
+        title: 'Not signed in',
+        description: 'You must be logged in to start a chat.',
+      });
       return;
     }
-    startTransition(async () => {
+
+    if (currentUser.id === profileUser.id) {
+      toast({
+        variant: 'destructive',
+        title: 'Oops',
+        description: 'You cannot start a chat with yourself.',
+      });
+      return;
+    }
+
+    try {
+      setIsStartingChat(true);
       const result = await getOrCreateChatAction(currentUser.id, profileUser.id);
+
       if (result.success && result.chatId) {
-        router.push(`/chats/${result.chatId}`);
+        // small delay ensures chat exists before navigation
+        setTimeout(() => {
+          router.push(`/chats/${result.chatId}`);
+        }, 100);
       } else {
-        toast({ variant: 'destructive', title: 'Error', description: result.error || 'Could not start chat.' });
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: result.error || 'Could not start chat.',
+        });
       }
-    });
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error?.message || 'Could not start chat.',
+      });
+    } finally {
+      setIsStartingChat(false);
+    }
   };
 
   return (
@@ -150,9 +181,9 @@ export function ProfileHeader({ user: profileUser }: { user: User }) {
                     </Button>
                   </motion.div>
                   <motion.div whileHover={{ scale: 1.05 }}>
-                    <Button variant="outline" onClick={handleStartChat} disabled={isPending}>
+                    <Button variant="outline" onClick={handleStartChat} disabled={isStartingChat}>
                         <MessageSquare className="mr-2" />
-                        {isPending ? 'Starting...' : 'Message'}
+                        {isStartingChat ? 'Starting...' : 'Message'}
                     </Button>
                    </motion.div>
                 </>
