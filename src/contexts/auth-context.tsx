@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             };
             
             // Create profile in background - don't await
-            setDoc(userRef, { ...newUser, createdAt: serverTimestamp() }).catch(err => {
+            setDoc(userRef, { id: user.uid, ...newUser, createdAt: serverTimestamp() }).catch(err => {
               console.error("Error creating user profile:", err);
             });
             
@@ -157,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         sports: [],
       };
 
-      await setDoc(userRef, { ...newUser, createdAt: serverTimestamp() });
+      await setDoc(userRef, { id: user.uid, ...newUser, createdAt: serverTimestamp() });
       setUser({ id: user.uid, ...newUser });
   };
 

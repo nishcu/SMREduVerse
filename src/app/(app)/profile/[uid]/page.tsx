@@ -151,7 +151,7 @@ export default function ProfilePage() {
             sports: [],
           };
           
-          await setDoc(userRef!, { ...newUser, createdAt: serverTimestamp() });
+          await setDoc(userRef!, { id: firebaseUser.uid, ...newUser, createdAt: serverTimestamp() });
           // Profile will be loaded by useDoc hook after creation
         } catch (error) {
           console.error("Error creating profile:", error);
