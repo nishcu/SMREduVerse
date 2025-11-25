@@ -81,11 +81,14 @@ function PostCard({ post }: { post: Post }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const lastTapRef = useRef<number>(0);
   const heartTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const authorUid = post.author?.uid || post.authorUid || 'unknown';
+  const authorName = post.author?.name || 'Unknown user';
+  const authorAvatar = post.author?.avatarUrl || '';
 
   const createdAt = post.createdAt?.toDate();
   const timeAgo = createdAt ? formatDistanceToNow(createdAt, { addSuffix: true }) : 'just now';
 
-  const isOwnPost = user?.id === post.author.uid;
+  const isOwnPost = user?.id ? user.id === authorUid : false;
 
   // Check if user liked this post and if following
   useEffect(() => {
@@ -101,7 +104,7 @@ function PostCard({ post }: { post: Post }) {
           }
           
           // Check follow status
-          const followResult = await checkFollowingAction(post.author.uid, idToken);
+          const followResult = await checkFollowingAction(authorUid, idToken);
           if (followResult.success) {
             setIsFollowing(followResult.following);
           }
@@ -118,7 +121,7 @@ function PostCard({ post }: { post: Post }) {
       
       checkInitialState();
     }
-  }, [firebaseUser, post.id, post.author.uid]);
+  }, [firebaseUser, post.id, authorUid]);
 
   useEffect(() => {
     return () => {
@@ -238,14 +241,14 @@ function PostCard({ post }: { post: Post }) {
     
     try {
       const idToken = await firebaseUser.getIdToken();
-      const result = await toggleFollowAction(post.author.uid, idToken);
+      const result = await toggleFollowAction(authorUid, idToken);
       
       if (result.success) {
         toast({
           title: result.following ? 'Followed!' : 'Unfollowed',
           description: result.following 
-            ? `You are now following ${post.author.name}.`
-            : `You unfollowed ${post.author.name}.`,
+            ? `You are now following ${authorName}.`
+            : `You unfollowed ${authorName}.`,
         });
       } else {
         // Revert optimistic update
@@ -270,7 +273,7 @@ function PostCard({ post }: { post: Post }) {
   };
 
   const handleShare = () => {
-    const shareText = `Check out this post by ${post.author.name} on EduVerse Architect!`;
+    const shareText = `Check out this post by ${authorName} on EduVerse Architect!`;
     const shareUrl = `${window.location.origin}/posts/${post.id}`; // Assuming a post detail page exists
     if (navigator.share) {
       navigator.share({
@@ -290,7 +293,7 @@ function PostCard({ post }: { post: Post }) {
   const handleStartChat = async () => {
     if (!user || !firebaseUser || isStartingChat || isOwnPost) return;
     
-    if (!user.id || !post.author.uid) {
+    if (!user.id || !authorUid) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -300,7 +303,7 @@ function PostCard({ post }: { post: Post }) {
     }
 
     // Prevent starting chat with yourself
-    if (user.id === post.author.uid) {
+    if (user.id === authorUid) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -312,7 +315,7 @@ function PostCard({ post }: { post: Post }) {
     setIsStartingChat(true);
     
     try {
-      const result = await getOrCreateChatAction(user.id, post.author.uid);
+      const result = await getOrCreateChatAction(user.id, authorUid);
       if (result.success && result.chatId) {
         // Use window.location.href to avoid hydration issues
         window.location.href = `/chats/${result.chatId}`;
@@ -346,16 +349,16 @@ function PostCard({ post }: { post: Post }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-start gap-3 space-y-0 p-4">
-        <Link href={`/profile/${post.author.uid}`}>
+        <Link href={`/profile/${authorUid}`}>
           <Avatar>
-            <AvatarImage src={post.author.avatarUrl} />
-            <AvatarFallback>{getInitials(post.author.name)}</AvatarFallback>
+            <AvatarImage src={authorAvatar} />
+            <AvatarFallback>{getInitials(authorName)}</AvatarFallback>
           </Avatar>
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <Link href={`/profile/${post.author.uid}`} className="font-semibold hover:underline">
-              {post.author.name}
+            <Link href={`/profile/${authorUid}`} className="font-semibold hover:underline">
+              {authorName}
             </Link>
             <span className="text-xs text-muted-foreground">· {timeAgo}</span>
             {!isOwnPost && (
@@ -371,7 +374,7 @@ function PostCard({ post }: { post: Post }) {
               </>
             )}
           </div>
-          <p className="text-sm text-muted-foreground">@{post.author.name.replace(/\s+/g, '').toLowerCase()}</p>
+          <p className="text-sm text-muted-foreground">@{authorName.replace(/\s+/g, '').toLowerCase()}</p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -387,7 +390,7 @@ function PostCard({ post }: { post: Post }) {
              {!isOwnPost && (
                <DropdownMenuItem onClick={handleFollow} disabled={isFollowingAction}>
                 <UserPlus className="mr-2 h-4 w-4" />
-                {isFollowing ? 'Unfollow' : 'Follow'} {post.author.name}
+                {isFollowing ? 'Unfollow' : 'Follow'} {authorName}
               </DropdownMenuItem>
              )}
           </DropdownMenuContent>
@@ -562,7 +565,7 @@ function PostCard({ post }: { post: Post }) {
           setIsCommentDialogOpen(open);
         }}
         postId={post.id}
-        postAuthorId={post.author.uid}
+        postAuthorId={authorUid}
         initialCommentCount={commentCount}
         onCommentAdded={() => setCommentCount(prev => prev + 1)}
       />
