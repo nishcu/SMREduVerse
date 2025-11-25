@@ -51,6 +51,8 @@ declare module 'firebase/firestore' {
   export type DocumentReference<T = any> = any;
   export type Query<T = any> = any;
   export type Timestamp = any;
+  export type QueryDocumentSnapshot<T = any> = any;
+  export type DocumentData = any;
 }
 
 declare module 'lucide-react' {
@@ -98,6 +100,8 @@ declare module 'lucide-react' {
   export const Loader2: any;
   export const ShoppingBag: any;
   export const School: any;
+  export const Volume2: any;
+  export const VolumeX: any;
   export function createLucideIcon(name: string, svgPath: string): any;
 }
 

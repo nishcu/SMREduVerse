@@ -1,7 +1,7 @@
 
 'use client';
 
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, limit, startAfter, getDocs, type QueryDocumentSnapshot, type DocumentData } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,6 +14,9 @@ import {
   ShieldAlert,
   UserPlus,
   MessageSquare,
+  Loader2,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
@@ -26,15 +29,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { type Post } from '@/lib/types';
 import Link from 'next/link';
-import { useCollection } from '@/firebase';
-import { useMemo } from 'react';
 import { getInitials } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { CommentDialog } from '@/components/comment-dialog';
 import { toggleLikeAction, checkLikedAction, getLikedUsersAction, toggleFollowAction, checkFollowingAction } from './actions';
 import { getOrCreateChatAction } from '@/app/(app)/chats/actions';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function PostSkeleton() {
   return (
@@ -72,6 +74,13 @@ function PostCard({ post }: { post: Post }) {
   const [isLiking, setIsLiking] = useState(false);
   const [isFollowingAction, setIsFollowingAction] = useState(false);
   const [isStartingChat, setIsStartingChat] = useState(false);
+  const [showHeartBurst, setShowHeartBurst] = useState(false);
+  const [isVideoMuted, setIsVideoMuted] = useState(true);
+  const [isVideoInView, setIsVideoInView] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const lastTapRef = useRef<number>(0);
+  const heartTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const createdAt = post.createdAt?.toDate();
   const timeAgo = createdAt ? formatDistanceToNow(createdAt, { addSuffix: true }) : 'just now';
@@ -111,32 +120,80 @@ function PostCard({ post }: { post: Post }) {
     }
   }, [firebaseUser, post.id, post.author.uid]);
 
+  useEffect(() => {
+    return () => {
+      if (heartTimeoutRef.current) {
+        clearTimeout(heartTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (post.postType !== 'video' || !videoRef.current) {
+      return;
+    }
+
+    const videoElement = videoRef.current;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const isVisible = entry.isIntersecting && entry.intersectionRatio > 0.55;
+        setIsVideoInView(isVisible);
+        if (isVisible) {
+          videoElement
+            .play()
+            .then(() => setIsVideoReady(true))
+            .catch(() => {
+              // Autoplay restrictions may block play until user interacts
+              setIsVideoReady(false);
+            });
+        } else {
+          videoElement.pause();
+        }
+      },
+      {
+        threshold: [0.25, 0.55, 0.9],
+      }
+    );
+
+    observer.observe(videoElement);
+
+    return () => {
+      observer.disconnect();
+      videoElement.pause();
+    };
+  }, [post.postType]);
+
+  const triggerHeartBurst = useCallback(() => {
+    if (heartTimeoutRef.current) {
+      clearTimeout(heartTimeoutRef.current);
+    }
+    setShowHeartBurst(true);
+    heartTimeoutRef.current = setTimeout(() => {
+      setShowHeartBurst(false);
+    }, 600);
+  }, []);
+
   const handleLike = async () => {
     if (!firebaseUser || isLiking) return;
     
     setIsLiking(true);
-    // Optimistic update
     const wasLiked = isLiked;
+    const previousLikes = likes;
     setIsLiked(!wasLiked);
-    setLikes(wasLiked ? likes - 1 : likes + 1);
+    setLikes(wasLiked ? Math.max(previousLikes - 1, 0) : previousLikes + 1);
     
     try {
       const idToken = await firebaseUser.getIdToken();
       const result = await toggleLikeAction(post.id, idToken);
       
       if (result.success) {
-        // Update like count from server
-        setLikes(prev => result.liked ? prev + 1 : prev - 1);
-        
-        // Reload liked users
         const likedUsersResult = await getLikedUsersAction(post.id, 5);
         if (likedUsersResult.success) {
           setLikedUsers(likedUsersResult.users);
         }
       } else {
-        // Revert optimistic update
         setIsLiked(wasLiked);
-        setLikes(likes);
+        setLikes(previousLikes);
         toast({
           variant: 'destructive',
           title: 'Error',
@@ -144,9 +201,8 @@ function PostCard({ post }: { post: Post }) {
         });
       }
     } catch (error) {
-      // Revert optimistic update
       setIsLiked(wasLiked);
-      setLikes(likes);
+      setLikes(previousLikes);
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -155,6 +211,21 @@ function PostCard({ post }: { post: Post }) {
     } finally {
       setIsLiking(false);
     }
+  };
+
+  const handleMediaDoubleTap = () => {
+    triggerHeartBurst();
+    if (!isLiked) {
+      handleLike();
+    }
+  };
+
+  const handleTouchEnd = () => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 250) {
+      handleMediaDoubleTap();
+    }
+    lastTapRef.current = now;
   };
 
   const handleFollow = async () => {
@@ -325,13 +396,96 @@ function PostCard({ post }: { post: Post }) {
       <CardContent className="space-y-4 px-4 pb-4">
         <p className="whitespace-pre-wrap">{post.content}</p>
         {post.imageUrl && (
-          <div className="relative aspect-video w-full overflow-hidden rounded-lg border">
-            <Image
-              src={post.imageUrl}
-              alt="Post image"
-              fill
-              className="object-cover"
-            />
+          <div
+            className="relative aspect-video w-full overflow-hidden rounded-lg border bg-black"
+            onDoubleClick={handleMediaDoubleTap}
+            onTouchEnd={handleTouchEnd}
+          >
+            {post.postType === 'video' ? (
+              <>
+                <video
+                  ref={videoRef}
+                  src={post.imageUrl}
+                  className="h-full w-full object-cover"
+                  muted={isVideoMuted}
+                  loop
+                  playsInline
+                  controls={false}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (!videoRef.current) return;
+                    if (videoRef.current.paused) {
+                      videoRef.current.play();
+                    } else {
+                      videoRef.current.pause();
+                    }
+                  }}
+                  onLoadedData={() => setIsVideoReady(true)}
+                />
+                <div className="absolute inset-0 pointer-events-none">
+                  <AnimatePresence>
+                    {showHeartBurst && (
+                      <motion.div
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.5, opacity: 0 }}
+                        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+                      >
+                        <Heart className="h-20 w-20 text-white drop-shadow-lg fill-white" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+                <div className="absolute bottom-3 right-3 flex items-center gap-2 rounded-full bg-black/60 px-3 py-1 text-xs text-white">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setIsVideoMuted((prev) => {
+                        const next = !prev;
+                        if (videoRef.current) {
+                          videoRef.current.muted = next;
+                        }
+                        return next;
+                      });
+                    }}
+                    className="flex items-center gap-1"
+                  >
+                    {isVideoMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                    <span>{isVideoMuted ? 'Muted' : 'Sound on'}</span>
+                  </button>
+                  <span className="hidden sm:inline">
+                    {isVideoInView && isVideoReady ? 'Playing' : 'Paused'}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <Image
+                  src={post.imageUrl}
+                  alt="Post image"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 700px"
+                />
+                <div className="absolute inset-0 pointer-events-none">
+                  <AnimatePresence>
+                    {showHeartBurst && (
+                      <motion.div
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.5, opacity: 0 }}
+                        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+                      >
+                        <Heart className="h-20 w-20 text-white drop-shadow-lg fill-white" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </>
+            )}
           </div>
         )}
       </CardContent>
@@ -416,77 +570,159 @@ function PostCard({ post }: { post: Post }) {
   );
 }
 
+const BATCH_SIZE = 8;
+
+const mapDocToPost = (doc: QueryDocumentSnapshot<DocumentData>): Post => ({
+  id: doc.id,
+  ...(doc.data() as Omit<Post, 'id'>),
+});
+
 interface PostsFeedProps {
   feedType?: 'for-you' | 'following' | 'trending';
 }
 
 export function PostsFeed({ feedType = 'for-you' }: PostsFeedProps) {
   const { firebaseUser } = useAuth();
-  const [serverPosts, setServerPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  
-  // For "For You" feed, use client-side real-time collection
-  const postsQuery = useMemo(() => query(collection(db, 'posts'), orderBy('createdAt', 'desc')), []);
-  const { data: clientPosts, loading: clientLoading, error: clientError } = useCollection<Post>(postsQuery);
+  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const loadInitialForYou = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const initialQuery = query(
+        collection(db, 'posts'),
+        orderBy('createdAt', 'desc'),
+        limit(BATCH_SIZE)
+      );
+      const snapshot = await getDocs(initialQuery);
+      const newPosts = snapshot.docs.map(mapDocToPost);
+      setPosts(newPosts);
+      setLastDoc(snapshot.docs[snapshot.docs.length - 1] || null);
+      setHasMore(snapshot.docs.length === BATCH_SIZE);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadServerFeed = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    setHasMore(false);
+    try {
+      if (feedType === 'following') {
+        if (!firebaseUser) {
+          setPosts([]);
+          setLoading(false);
+          return;
+        }
+        const idToken = await firebaseUser.getIdToken();
+        const { getFollowingFeedAction } = await import('./actions');
+        const result = await getFollowingFeedAction(idToken, 20);
+        if (result.success) {
+          const formattedPosts = result.posts.map((post: any) => ({
+            ...post,
+            createdAt: post.createdAt
+              ? typeof post.createdAt === 'string'
+                ? { toDate: () => new Date(post.createdAt) }
+                : post.createdAt
+              : null,
+          }));
+          setPosts(formattedPosts as Post[]);
+        } else {
+          setError(new Error(result.error || 'Failed to load feed'));
+        }
+      } else if (feedType === 'trending') {
+        const { getTrendingFeedAction } = await import('./actions');
+        const result = await getTrendingFeedAction(20);
+        if (result.success) {
+          const formattedPosts = result.posts.map((post: any) => ({
+            ...post,
+            createdAt: post.createdAt
+              ? typeof post.createdAt === 'string'
+                ? { toDate: () => new Date(post.createdAt) }
+                : post.createdAt
+              : null,
+          }));
+          setPosts(formattedPosts as Post[]);
+        } else {
+          setError(new Error(result.error || 'Failed to load feed'));
+        }
+      }
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setLoading(false);
+    }
+  }, [feedType, firebaseUser]);
+
+  const fetchMoreForYou = useCallback(async () => {
+    if (feedType !== 'for-you' || !hasMore || isFetchingMore || !lastDoc) {
+      return;
+    }
+    setIsFetchingMore(true);
+    try {
+      const nextQuery = query(
+        collection(db, 'posts'),
+        orderBy('createdAt', 'desc'),
+        startAfter(lastDoc),
+        limit(BATCH_SIZE)
+      );
+      const snapshot = await getDocs(nextQuery);
+      const newPosts = snapshot.docs.map(mapDocToPost);
+      setPosts((prev) => [...prev, ...newPosts]);
+      setLastDoc(snapshot.docs[snapshot.docs.length - 1] || null);
+      setHasMore(snapshot.docs.length === BATCH_SIZE);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setIsFetchingMore(false);
+    }
+  }, [feedType, hasMore, isFetchingMore, lastDoc]);
 
   useEffect(() => {
-    const loadFeed = async () => {
-      if (feedType === 'for-you') {
-        // Use client-side real-time updates for "For You"
-        setLoading(clientLoading);
-        setError(clientError || null);
-        return;
-      }
+    setPosts([]);
+    setLastDoc(null);
+    setHasMore(true);
+    setIsFetchingMore(false);
+    setError(null);
 
-      setLoading(true);
-      try {
-        if (feedType === 'following') {
-          if (!firebaseUser) {
-            setServerPosts([]);
-            setLoading(false);
-            return;
-          }
-          const idToken = await firebaseUser.getIdToken();
-          const { getFollowingFeedAction } = await import('./actions');
-          const result = await getFollowingFeedAction(idToken, 20);
-          if (result.success) {
-            // Convert ISO string timestamps back to Date objects for client-side use
-            const formattedPosts = result.posts.map((post: any) => ({
-              ...post,
-              createdAt: post.createdAt ? (typeof post.createdAt === 'string' ? { toDate: () => new Date(post.createdAt) } : post.createdAt) : null,
-            }));
-            setServerPosts(formattedPosts as Post[]);
-          } else {
-            setError(new Error(result.error || 'Failed to load feed'));
-          }
-        } else if (feedType === 'trending') {
-          const { getTrendingFeedAction } = await import('./actions');
-          const result = await getTrendingFeedAction(20);
-          if (result.success) {
-            // Convert ISO string timestamps back to Date objects for client-side use
-            const formattedPosts = result.posts.map((post: any) => ({
-              ...post,
-              createdAt: post.createdAt ? (typeof post.createdAt === 'string' ? { toDate: () => new Date(post.createdAt) } : post.createdAt) : null,
-            }));
-            setServerPosts(formattedPosts as Post[]);
-          } else {
-            setError(new Error(result.error || 'Failed to load feed'));
-          }
-        }
-      } catch (err) {
-        setError(err as Error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (feedType === 'for-you') {
+      loadInitialForYou();
+    } else {
+      loadServerFeed();
+    }
+  }, [feedType, loadInitialForYou, loadServerFeed]);
 
-    loadFeed();
-  }, [feedType, firebaseUser, clientLoading, clientError]);
+  useEffect(() => {
+    if (feedType !== 'for-you') return;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
 
-  const posts = feedType === 'for-you' ? clientPosts : serverPosts;
-  const isLoading = feedType === 'for-you' ? clientLoading : loading;
-  const feedError = feedType === 'for-you' ? clientError : error;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            fetchMoreForYou();
+          }
+        });
+      },
+      { rootMargin: '200px' }
+    );
+
+    observer.observe(sentinel);
+
+    return () => observer.disconnect();
+  }, [feedType, fetchMoreForYou]);
+
+  const feedError = error;
 
   if (isLoading) {
     return (
@@ -526,6 +762,25 @@ export function PostsFeed({ feedType = 'for-you' }: PostsFeedProps) {
       {posts?.map((post) => (
         <PostCard key={post.id} post={post} />
       ))}
+      {feedType === 'for-you' && (
+        <div
+          ref={sentinelRef}
+          className="flex items-center justify-center pb-6 pt-2 text-sm text-muted-foreground"
+        >
+          {hasMore ? (
+            isFetchingMore ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading more posts...
+              </span>
+            ) : (
+              'Keep scrolling for more posts'
+            )
+          ) : (
+            "You're all caught up 🎉"
+          )}
+        </div>
+      )}
     </div>
   );
 }
