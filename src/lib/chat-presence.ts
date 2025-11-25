@@ -1,7 +1,7 @@
 'use client';
 
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, setDoc, onDisconnect, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useEffect, useRef } from 'react';
 
@@ -10,6 +10,15 @@ export function usePresence() {
   const presenceRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (presenceRef.current) {
+        // Fire-and-forget; we don't await inside unload handler
+        presenceRef.current().catch(() => {});
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const userStatusRef = doc(db, 'presence', user.uid);
@@ -22,28 +31,23 @@ export function usePresence() {
         }, { merge: true });
 
         // Set user as offline when they disconnect
-        const disconnectRef = onDisconnect(userStatusRef);
-        await disconnectRef.set({
-          status: 'offline',
-          lastSeen: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-
-        // Store cleanup function
-        presenceRef.current = async () => {
+        const markOffline = async () => {
           await setDoc(userStatusRef, {
             status: 'offline',
             lastSeen: serverTimestamp(),
             updatedAt: serverTimestamp(),
           }, { merge: true });
         };
+
+        presenceRef.current = markOffline;
       }
     });
 
     return () => {
       unsubscribe();
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       if (presenceRef.current) {
-        presenceRef.current();
+        presenceRef.current().catch(() => {});
       }
     };
   }, []);

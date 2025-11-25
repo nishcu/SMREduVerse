@@ -161,7 +161,6 @@ export function CreatePostDialog({
     } else if (validVideoTypes.includes(file.type)) {
       form.setValue('postType', 'video');
     }
-  };
 
     startFileUpload(file);
   };
