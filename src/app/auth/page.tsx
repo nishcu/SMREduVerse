@@ -167,9 +167,9 @@ export default function AuthPage() {
   const { loading } = useAuth();
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background pb-24">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-secondary via-background to-background opacity-50"></div>
-      <Card className="relative z-10 w-full max-w-sm shadow-2xl">
+      <Card className="relative z-10 w-full max-w-sm shadow-2xl mb-8">
         <CardHeader className="text-center">
           <Link href="/" className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 transition-transform hover:scale-110">
             <GraduationCap className="h-8 w-8 text-primary" />
@@ -177,7 +177,7 @@ export default function AuthPage() {
           <CardTitle className="font-headline text-3xl">Welcome</CardTitle>
           <CardDescription>The All-in-One Education Platform.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-6">
           {loading ? (
             <div className="flex justify-center items-center h-48">
               <Loader2 className="animate-spin text-primary h-12 w-12" />
@@ -198,7 +198,7 @@ export default function AuthPage() {
           )}
         </CardContent>
       </Card>
-      <div className="absolute bottom-4 z-10">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 mt-8">
         <Logo />
       </div>
     </div>
