@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/card';
 import { Logo } from '@/components/logo';
 import { GraduationCap, Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -198,9 +199,34 @@ export default function AuthPage() {
           )}
         </CardContent>
       </Card>
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 mt-8">
-        <Logo />
-      </div>
+      <motion.div 
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 mt-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ 
+          opacity: 1, 
+          y: 0,
+        }}
+        transition={{ 
+          duration: 0.8,
+          delay: 0.3,
+          type: "spring",
+          stiffness: 100,
+          damping: 15
+        }}
+      >
+        <motion.div
+          animate={{
+            scale: [1, 1.05, 1],
+          }}
+          transition={{
+            duration: 2.5,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        >
+          <Logo />
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

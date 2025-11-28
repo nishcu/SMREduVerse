@@ -17,9 +17,34 @@ export default function LandingPage() {
         transition={{ duration: 0.8 }}
         className="relative z-10 flex flex-col items-center justify-center w-full max-w-md text-center"
       >
-        <div className="mb-8">
+        <motion.div 
+          className="mb-8"
+          initial={{ opacity: 0, scale: 0.8, y: -20 }}
+          animate={{ 
+            opacity: 1, 
+            scale: 1, 
+            y: 0,
+          }}
+          transition={{ 
+            duration: 0.6,
+            type: "spring",
+            stiffness: 100,
+            damping: 15
+          }}
+        >
+          <motion.div
+            animate={{
+              scale: [1, 1.05, 1],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          >
             <Logo />
-        </div>
+          </motion.div>
+        </motion.div>
 
         <SplashScreen />
 
