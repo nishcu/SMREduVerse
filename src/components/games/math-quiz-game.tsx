@@ -98,7 +98,7 @@ export const MathQuizGame = ({ onComplete }: { onComplete: () => void }) => {
     }
     
     const handleShare = () => {
-        const shareText = `I scored ${score} on the Math Quiz on EduVerse Architect! Think you can do better?`;
+        const shareText = `I scored ${score} on the Math Quiz on GenZeerr! Think you can do better?`;
         if (navigator.share) {
             navigator.share({
                 title: 'Math Quiz High Score!',

@@ -83,7 +83,7 @@ export const FocusTapsGame = ({ onComplete }: { onComplete: () => void }) => {
     };
     
     const handleShare = () => {
-        const shareText = `I scored ${score} in the Focus Taps game on EduVerse Architect! Can you beat my score?`;
+        const shareText = `I scored ${score} in the Focus Taps game on GenZeerr! Can you beat my score?`;
         if (navigator.share) {
             navigator.share({
                 title: 'New High Score!',

@@ -63,7 +63,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const isInstructor = user?.id === course.instructorId;
 
   const handleShare = () => {
-    const shareText = `I just enrolled in the "${course.title}" course on EduVerse Architect! #learning #education`;
+    const shareText = `I just enrolled in the "${course.title}" course on GenZeerr! #learning #education`;
     const shareUrl = window.location.href;
     if (navigator.share) {
       navigator.share({

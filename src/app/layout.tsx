@@ -5,7 +5,7 @@ import { ErrorBoundary } from '@/components/ui/error-boundary';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'EduVerse Architect',
+  title: 'GenZeerr',
   description: 'The All-in-One Education Platform',
   manifest: '/manifest.json',
 };

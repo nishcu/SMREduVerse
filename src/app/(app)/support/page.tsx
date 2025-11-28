@@ -29,7 +29,7 @@ const faqItems = [
   },
   {
     question: 'Is there a mobile app?',
-    answer: 'A dedicated mobile app for EduVerse Architect is currently in development. In the meantime, the website is fully responsive and can be accessed from any mobile browser.',
+    answer: 'A dedicated mobile app for GenZeerr is currently in development. In the meantime, the website is fully responsive and can be accessed from any mobile browser.',
   },
 ];
 

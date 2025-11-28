@@ -237,11 +237,11 @@ export default function PostDetailPage({ params }: { params: { id: string } }) {
   };
 
   const handleShare = () => {
-    const shareText = `Check out this post by ${post.author.name} on EduVerse Architect!`;
+    const shareText = `Check out this post by ${post.author.name} on GenZeerr!`;
     const shareUrl = window.location.href;
     if (navigator.share) {
       navigator.share({
-        title: 'Post from EduVerse Architect',
+        title: 'Post from GenZeerr',
         text: shareText,
         url: shareUrl,
       }).catch(() => {

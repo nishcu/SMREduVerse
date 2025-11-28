@@ -273,11 +273,11 @@ function PostCard({ post }: { post: Post }) {
   };
 
   const handleShare = () => {
-    const shareText = `Check out this post by ${authorName} on EduVerse Architect!`;
+    const shareText = `Check out this post by ${authorName} on GenZeerr!`;
     const shareUrl = `${window.location.origin}/posts/${post.id}`; // Assuming a post detail page exists
     if (navigator.share) {
       navigator.share({
-        title: 'Post from EduVerse Architect',
+        title: 'Post from GenZeerr',
         text: shareText,
         url: shareUrl,
       }).catch(console.error);

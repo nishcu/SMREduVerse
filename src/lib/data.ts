@@ -312,7 +312,7 @@ export const mockNotifications: Notification[] = [
   {
     id: 'notif_2',
     type: 'contest_win',
-    actor: { name: 'EduVerse Team', avatarUrl: '/logo.svg', uid: 'system' },
+    actor: { name: 'GenZeerr Team', avatarUrl: '/logo.svg', uid: 'system' },
     data: { contestName: 'Weekly Science Quiz' },
     timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
     read: false,
