@@ -8,11 +8,12 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Lock, Unlock, Bot, Trophy, ShoppingBag, MessageSquare, Video, Bell, Activity } from 'lucide-react';
+import { Lock, Unlock, Bot, Trophy, ShoppingBag, MessageSquare, Video, Bell, Activity, Building2, Mail, Phone, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 import { 
   saveParentalControlSettings, 
   getParentalControlSettings, 
@@ -557,6 +558,106 @@ export default function SettingsPage() {
                         </CardFooter>
                     </Card>
                 </motion.div>
+            </motion.div>
+            
+            {/* Legal & Contact Information */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+            >
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Building2 className="h-5 w-5" />
+                            Legal & Contact Information
+                        </CardTitle>
+                        <CardDescription>
+                            Company information and contact details for GenZeerr.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-4">
+                            <div className="flex items-start gap-3">
+                                <Building2 className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                <div>
+                                    <p className="font-semibold">Legal Owner</p>
+                                    <p className="text-sm text-muted-foreground">Venkat Kumar Suryadevara</p>
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-start gap-3">
+                                <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                <div>
+                                    <p className="font-semibold">Address</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        H No 13-1-143/D/2, Flat 402, Sai Towers,<br />
+                                        Mattewada, Warangal,<br />
+                                        Telangana-506002, India
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-start gap-3">
+                                <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                <div>
+                                    <p className="font-semibold">Email</p>
+                                    <a 
+                                        href="mailto:info@genzeerr.com" 
+                                        className="text-sm text-primary hover:underline"
+                                    >
+                                        info@genzeerr.com
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-start gap-3">
+                                <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                <div>
+                                    <p className="font-semibold">Mobile</p>
+                                    <a 
+                                        href="tel:+917396059393" 
+                                        className="text-sm text-primary hover:underline"
+                                    >
+                                        +91 7396059393
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <Separator />
+                        
+                        <div className="space-y-2">
+                            <p className="text-sm font-semibold">Legal Documents</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <Link 
+                                    href="/legal/terms" 
+                                    className="text-sm text-primary hover:underline"
+                                >
+                                    Terms & Conditions
+                                </Link>
+                                <Link 
+                                    href="/legal/privacy" 
+                                    className="text-sm text-primary hover:underline"
+                                >
+                                    Privacy Policy
+                                </Link>
+                                <Link 
+                                    href="/legal/refunds" 
+                                    className="text-sm text-primary hover:underline"
+                                >
+                                    Refunds & Cancellations Policy
+                                </Link>
+                                <Link 
+                                    href="/legal/shipping" 
+                                    className="text-sm text-primary hover:underline"
+                                >
+                                    Shipping Policy
+                                </Link>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
             </motion.div>
         </div>
     )

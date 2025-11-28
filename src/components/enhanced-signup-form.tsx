@@ -6,8 +6,10 @@ import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Check, X, Eye, EyeOff } from 'lucide-react';
 import { MobileNumberDialog } from './mobile-number-dialog';
+import Link from 'next/link';
 
 export function EnhancedSignupForm() {
   const { user, signupWithEmail } = useAuth();
@@ -23,6 +25,12 @@ export function EnhancedSignupForm() {
   const [isSigningUp, setIsSigningUp] = useState(false);
   const [showMobileDialog, setShowMobileDialog] = useState(false);
   const [newUserId, setNewUserId] = useState<string | null>(null);
+  
+  // Legal agreement checkboxes
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
+  const [acceptedRefunds, setAcceptedRefunds] = useState(false);
+  const [acceptedShipping, setAcceptedShipping] = useState(false);
 
   // Password validation
   const [passwordChecks, setPasswordChecks] = useState({
@@ -96,6 +104,12 @@ export function EnhancedSignupForm() {
     // Check if passwords match
     if (!passwordsMatch) {
       setError('Passwords do not match.');
+      return;
+    }
+
+    // Check if all legal agreements are accepted
+    if (!acceptedTerms || !acceptedPrivacy || !acceptedRefunds || !acceptedShipping) {
+      setError('Please accept all terms and policies to continue.');
       return;
     }
 
@@ -243,6 +257,69 @@ export function EnhancedSignupForm() {
           )}
         </div>
 
+        {/* Legal Agreement Checkboxes */}
+        <div className="space-y-3 pt-2">
+          <div className="flex items-start space-x-2">
+            <Checkbox
+              id="terms"
+              checked={acceptedTerms}
+              onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
+              className="mt-1"
+            />
+            <Label htmlFor="terms" className="text-sm leading-relaxed cursor-pointer">
+              I accept the{' '}
+              <Link href="/legal/terms" target="_blank" className="text-primary underline hover:text-primary/80">
+                Terms & Conditions
+              </Link>
+            </Label>
+          </div>
+          
+          <div className="flex items-start space-x-2">
+            <Checkbox
+              id="privacy"
+              checked={acceptedPrivacy}
+              onCheckedChange={(checked) => setAcceptedPrivacy(checked === true)}
+              className="mt-1"
+            />
+            <Label htmlFor="privacy" className="text-sm leading-relaxed cursor-pointer">
+              I accept the{' '}
+              <Link href="/legal/privacy" target="_blank" className="text-primary underline hover:text-primary/80">
+                Privacy Policy
+              </Link>
+            </Label>
+          </div>
+          
+          <div className="flex items-start space-x-2">
+            <Checkbox
+              id="refunds"
+              checked={acceptedRefunds}
+              onCheckedChange={(checked) => setAcceptedRefunds(checked === true)}
+              className="mt-1"
+            />
+            <Label htmlFor="refunds" className="text-sm leading-relaxed cursor-pointer">
+              I accept the{' '}
+              <Link href="/legal/refunds" target="_blank" className="text-primary underline hover:text-primary/80">
+                Refunds & Cancellations Policy
+              </Link>
+            </Label>
+          </div>
+          
+          <div className="flex items-start space-x-2">
+            <Checkbox
+              id="shipping"
+              checked={acceptedShipping}
+              onCheckedChange={(checked) => setAcceptedShipping(checked === true)}
+              className="mt-1"
+            />
+            <Label htmlFor="shipping" className="text-sm leading-relaxed cursor-pointer">
+              I accept the{' '}
+              <Link href="/legal/shipping" target="_blank" className="text-primary underline hover:text-primary/80">
+                Shipping Policy
+              </Link>
+            </Label>
+          </div>
+        </div>
+
         {error && (
           <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
             <p className="text-sm text-destructive">{error}</p>
@@ -252,7 +329,18 @@ export function EnhancedSignupForm() {
         <Button
           type="submit"
           className="w-full"
-          disabled={isSigningUp || !isPasswordValid || !passwordsMatch || !name.trim() || !email.trim() || !!emailError}
+          disabled={
+            isSigningUp || 
+            !isPasswordValid || 
+            !passwordsMatch || 
+            !name.trim() || 
+            !email.trim() || 
+            !!emailError ||
+            !acceptedTerms ||
+            !acceptedPrivacy ||
+            !acceptedRefunds ||
+            !acceptedShipping
+          }
         >
           {isSigningUp ? (
             <>
