@@ -5,6 +5,7 @@ import type { CoinBundle } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useCashfreePayment } from '@/hooks/use-cashfree-payment';
 import { Coins, Loader2, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
@@ -16,16 +17,25 @@ interface CoinBundleCardProps {
 export function CoinBundleCard({ bundle }: CoinBundleCardProps) {
     const [isPurchasing, setIsPurchasing] = useState(false);
     const { toast } = useToast();
+    const { startPayment } = useCashfreePayment();
 
     const handlePurchase = async () => {
         setIsPurchasing(true);
-        // Simulate a payment processing delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        toast({
-            title: 'Purchase Successful!',
-            description: `You've added ${bundle.coins} Knowledge Coins to your wallet.`,
-        });
-        setIsPurchasing(false);
+        try {
+            const result = await startPayment({
+                itemType: 'coin_bundle',
+                itemId: bundle.id,
+            });
+
+            if (result.success) {
+                toast({
+                    title: 'Purchase Successful!',
+                    description: `You've added ${bundle.coins} Knowledge Coins to your wallet.`,
+                });
+            }
+        } finally {
+            setIsPurchasing(false);
+        }
     };
 
     return (
