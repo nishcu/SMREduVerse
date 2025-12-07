@@ -8,6 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Coins, Loader2, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
+import { useAuth } from '@/hooks/use-auth';
+import { useCashfreeCheckout } from '@/hooks/use-cashfree-checkout';
 
 interface CoinBundleCardProps {
     bundle: CoinBundle;
@@ -16,16 +18,45 @@ interface CoinBundleCardProps {
 export function CoinBundleCard({ bundle }: CoinBundleCardProps) {
     const [isPurchasing, setIsPurchasing] = useState(false);
     const { toast } = useToast();
+    const { firebaseUser } = useAuth();
+    const { startPayment, sdkReady } = useCashfreeCheckout();
 
     const handlePurchase = async () => {
+        if (!firebaseUser) {
+            toast({
+                variant: 'destructive',
+                title: 'Sign in required',
+                description: 'Please log in to purchase coins.',
+            });
+            return;
+        }
+
         setIsPurchasing(true);
-        // Simulate a payment processing delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        toast({
-            title: 'Purchase Successful!',
-            description: `You've added ${bundle.coins} Knowledge Coins to your wallet.`,
-        });
-        setIsPurchasing(false);
+        try {
+            const idToken = await firebaseUser.getIdToken();
+            const result = await startPayment({
+                itemId: bundle.id,
+                itemType: 'coin_bundle',
+                idToken,
+            });
+
+            const newBalance = result?.applyResult?.newBalance;
+
+            toast({
+                title: 'Coins Added!',
+                description: newBalance
+                    ? `You've added ${bundle.coins.toLocaleString()} Knowledge Coins. New balance: ${newBalance.toLocaleString()}`
+                    : `You've added ${bundle.coins.toLocaleString()} Knowledge Coins to your wallet.`,
+            });
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Purchase failed',
+                description: error?.message || 'Unable to process payment.',
+            });
+        } finally {
+            setIsPurchasing(false);
+        }
     };
 
     return (
@@ -45,7 +76,7 @@ export function CoinBundleCard({ bundle }: CoinBundleCardProps) {
                 <CardDescription>Knowledge Coins</CardDescription>
             </CardContent>
             <CardFooter>
-                <Button className="w-full" onClick={handlePurchase} disabled={isPurchasing}>
+                <Button className="w-full" onClick={handlePurchase} disabled={isPurchasing || !sdkReady}>
                     {isPurchasing ? (
                         <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

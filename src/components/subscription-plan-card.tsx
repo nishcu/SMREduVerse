@@ -7,6 +7,8 @@ import { useToast } from '@/hooks/use-toast';
 import { CheckCircle2, Loader2, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
+import { useAuth } from '@/hooks/use-auth';
+import { useCashfreeCheckout } from '@/hooks/use-cashfree-checkout';
 
 interface SubscriptionPlanCardProps {
     plan: SubscriptionPlan;
@@ -15,16 +17,43 @@ interface SubscriptionPlanCardProps {
 export function SubscriptionPlanCard({ plan }: SubscriptionPlanCardProps) {
     const [isUpgrading, setIsUpgrading] = useState(false);
     const { toast } = useToast();
+    const { firebaseUser } = useAuth();
+    const { startPayment, sdkReady } = useCashfreeCheckout();
 
     const handleUpgrade = async () => {
+        if (!firebaseUser) {
+            toast({
+                variant: 'destructive',
+                title: 'Sign in required',
+                description: 'Please log in to upgrade your subscription.',
+            });
+            return;
+        }
+
         setIsUpgrading(true);
-        // Simulate a payment processing delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        toast({
-            title: 'Upgrade Successful!',
-            description: `You are now subscribed to the ${plan.name} plan.`,
-        });
-        setIsUpgrading(false);
+        try {
+            const idToken = await firebaseUser.getIdToken();
+            const result = await startPayment({
+                itemId: plan.id,
+                itemType: 'subscription',
+                idToken,
+            });
+
+            const subscriptionName = result?.applyResult?.subscription?.planName || plan.name;
+
+            toast({
+                title: 'Subscription Activated!',
+                description: `You are now subscribed to the ${subscriptionName} plan.`,
+            });
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Payment failed',
+                description: error?.message || 'Unable to process payment.',
+            });
+        } finally {
+            setIsUpgrading(false);
+        }
     };
 
     return (
@@ -53,7 +82,12 @@ export function SubscriptionPlanCard({ plan }: SubscriptionPlanCardProps) {
                 </ul>
             </CardContent>
             <CardFooter>
-                <Button className="w-full" size="lg" onClick={handleUpgrade} disabled={isUpgrading}>
+                <Button
+                    className="w-full"
+                    size="lg"
+                    onClick={handleUpgrade}
+                    disabled={isUpgrading || !sdkReady}
+                >
                     {isUpgrading ? (
                         <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
