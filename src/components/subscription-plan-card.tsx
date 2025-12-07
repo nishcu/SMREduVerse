@@ -4,6 +4,7 @@ import type { SubscriptionPlan } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useCashfreePayment } from '@/hooks/use-cashfree-payment';
 import { CheckCircle2, Loader2, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
@@ -15,16 +16,25 @@ interface SubscriptionPlanCardProps {
 export function SubscriptionPlanCard({ plan }: SubscriptionPlanCardProps) {
     const [isUpgrading, setIsUpgrading] = useState(false);
     const { toast } = useToast();
+    const { startPayment } = useCashfreePayment();
 
     const handleUpgrade = async () => {
         setIsUpgrading(true);
-        // Simulate a payment processing delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        toast({
-            title: 'Upgrade Successful!',
-            description: `You are now subscribed to the ${plan.name} plan.`,
-        });
-        setIsUpgrading(false);
+        try {
+            const result = await startPayment({
+                itemType: 'subscription_plan',
+                itemId: plan.id,
+            });
+
+            if (result.success) {
+                toast({
+                    title: 'Upgrade Successful!',
+                    description: `You are now subscribed to the ${plan.name} plan.`,
+                });
+            }
+        } finally {
+            setIsUpgrading(false);
+        }
     };
 
     return (

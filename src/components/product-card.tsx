@@ -9,6 +9,7 @@ import { Coins, Loader2, ShoppingBag, Star, Sparkles, Tag } from 'lucide-react';
 import type { PartnerProduct } from '@/lib/types';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { useCashfreePayment } from '@/hooks/use-cashfree-payment';
 
 interface ProductCardProps {
   product: PartnerProduct;
@@ -18,18 +19,45 @@ interface ProductCardProps {
 export function ProductCard({ product, viewMode = 'grid' }: ProductCardProps) {
     const [isPurchasing, setIsPurchasing] = useState(false);
     const { toast } = useToast();
+    const { startPayment } = useCashfreePayment();
 
     const handlePurchase = async (currency: 'rupees' | 'coins') => {
         setIsPurchasing(true);
-        // Simulate payment processing
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        toast({
-            title: 'Purchase Successful!',
-            description: `You have purchased "${product.title}".`,
-        });
-        
-        setIsPurchasing(false);
+        try {
+            if (currency === 'rupees') {
+                if (!product.partnerId || !product.priceInRupees) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Purchase unavailable',
+                        description: 'This product cannot be purchased with cash at the moment.',
+                    });
+                    return;
+                }
+
+                const result = await startPayment({
+                    itemType: 'partner_product',
+                    itemId: product.id,
+                    partnerId: product.partnerId,
+                });
+
+                if (result.success) {
+                    toast({
+                        title: 'Payment Successful!',
+                        description: `Order confirmed for "${product.title}".`,
+                    });
+                }
+                return;
+            }
+
+            // TODO: Replace this simulation with a real coin-purchase flow
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            toast({
+                title: 'Redeemed with Coins',
+                description: `You have redeemed "${product.title}".`,
+            });
+        } finally {
+            setIsPurchasing(false);
+        }
     };
 
     if (viewMode === 'list') {
