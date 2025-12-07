@@ -1,18 +1,27 @@
 import { Cashfree } from 'cashfree-pg';
 
-const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID;
-const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY;
-const CASHFREE_ENVIRONMENT = process.env.CASHFREE_ENVIRONMENT || 'sandbox';
+let isCashfreeInitialized = false;
 
-const isCashfreeConfigured = CASHFREE_APP_ID && CASHFREE_SECRET_KEY;
+function initializeCashfree() {
+    if (isCashfreeInitialized) return;
 
-if (isCashfreeConfigured) {
-    // Initialize Cashfree
-    Cashfree.XClientId = CASHFREE_APP_ID;
-    Cashfree.XClientSecret = CASHFREE_SECRET_KEY;
-    Cashfree.XEnvironment = CASHFREE_ENVIRONMENT === 'production'
-        ? Cashfree.Environment.PRODUCTION
-        : Cashfree.Environment.SANDBOX;
+    const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID;
+    const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY;
+    const CASHFREE_ENVIRONMENT = process.env.CASHFREE_ENVIRONMENT || 'sandbox';
+
+    const isCashfreeConfigured = CASHFREE_APP_ID && CASHFREE_SECRET_KEY;
+
+    if (isCashfreeConfigured) {
+        // Initialize Cashfree
+        Cashfree.XClientId = CASHFREE_APP_ID;
+        Cashfree.XClientSecret = CASHFREE_SECRET_KEY;
+        Cashfree.XEnvironment = CASHFREE_ENVIRONMENT === 'production'
+            ? Cashfree.Environment.PRODUCTION
+            : Cashfree.Environment.SANDBOX;
+        isCashfreeInitialized = true;
+    } else {
+        throw new Error('Cashfree credentials not configured');
+    }
 }
 
 export interface CreateOrderRequest {
@@ -53,9 +62,7 @@ export class CashfreeService {
      * Create a payment order
      */
     static async createOrder(request: CreateOrderRequest): Promise<PaymentOrder> {
-        if (!isCashfreeConfigured) {
-            throw new Error('Cashfree payment gateway is not configured');
-        }
+        initializeCashfree();
 
         try {
             const createOrderRequest = {
@@ -106,9 +113,7 @@ export class CashfreeService {
      * Get order status
      */
     static async getOrderStatus(orderId: string) {
-        if (!isCashfreeConfigured) {
-            throw new Error('Cashfree payment gateway is not configured');
-        }
+        initializeCashfree();
 
         try {
             const response = await Cashfree.PGFetchOrder("2023-08-01", orderId);
