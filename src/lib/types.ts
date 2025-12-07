@@ -1,6 +1,17 @@
 
 import { FieldValue, Timestamp } from 'firebase/firestore';
 
+export interface UserSubscription {
+  planId: string;
+  planName: string;
+  price: string;
+  pricePeriod: string;
+  features: string[];
+  status: 'active' | 'expired' | 'cancelled';
+  startedAt?: Timestamp | Date | FieldValue | string;
+  renewedAt?: Timestamp | Date | FieldValue | string;
+}
+
 export interface EducationHistory {
   id: string;
   name: string;
@@ -42,6 +53,7 @@ export interface User {
   wallet: {
       knowledgeCoins: number;
   },
+  subscription?: UserSubscription | null;
   knowledgePoints: number;
   grade?: string;
   school?: string;
@@ -327,6 +339,33 @@ export interface CoinBundle {
     coins: number;
     price: string;
     isPopular?: boolean;
+}
+
+export type CashfreeOrderType = 'subscription' | 'coin_bundle';
+
+export interface CashfreeOrderRecord {
+  id: string;
+  orderId: string;
+  cfOrderId?: string;
+  paymentSessionId?: string;
+  status: 'CREATED' | 'PAID' | 'FAILED' | 'EXPIRED';
+  itemType: CashfreeOrderType;
+  itemId: string;
+  itemName: string;
+  amount: number;
+  currency: string;
+  userId: string;
+  userEmail?: string;
+  userName?: string;
+  userPhone?: string;
+  coins?: number;
+  bundleSnapshot?: CoinBundle;
+  subscriptionSnapshot?: SubscriptionPlan;
+  benefitsApplied?: boolean;
+  metadata?: Record<string, any>;
+  createdAt?: FieldValue | Timestamp | Date | string;
+  updatedAt?: FieldValue | Timestamp | Date | string;
+  paidAt?: FieldValue | Timestamp | Date | string;
 }
 
 export interface Notification {

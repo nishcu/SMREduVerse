@@ -11,3 +11,19 @@ export function getInitials(name: string) {
     if (names.length === 1) return names[0].charAt(0).toUpperCase();
     return names[0].charAt(0) + names[names.length - 1].charAt(0);
 }
+
+export function parsePriceToNumber(price?: string | number | null) {
+    if (typeof price === 'number') {
+        return price;
+    }
+    if (!price) {
+        return 0;
+    }
+    const normalized = price.toString().replace(/[^0-9.]/g, '');
+    const amount = parseFloat(normalized);
+    if (!Number.isFinite(amount) || amount <= 0) {
+        return 0;
+    }
+    // Round to two decimals to avoid floating point artifacts
+    return Math.round(amount * 100) / 100;
+}

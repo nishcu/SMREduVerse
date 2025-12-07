@@ -120,3 +120,13 @@ declare module '@hookform/resolvers' {
   export * from '@hookform/resolvers/index';
 }
 
+declare global {
+  interface Window {
+    Cashfree?: new (config: { mode: 'PROD' | 'TEST' }) => {
+      checkout(options: { paymentSessionId: string; redirectTarget?: string }): Promise<any>;
+    };
+  }
+}
+
+export {};
+
