@@ -42,6 +42,16 @@ export interface User {
   wallet: {
       knowledgeCoins: number;
   },
+  subscription?: {
+      planId: string;
+      planName: string;
+      priceLabel: string;
+      pricePeriod: string;
+      status: 'active' | 'inactive' | 'expired' | 'cancelled';
+      orderId?: string;
+      activatedAt?: Timestamp | string;
+      renewedAt?: Timestamp | string;
+  },
   knowledgePoints: number;
   grade?: string;
   school?: string;

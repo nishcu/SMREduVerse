@@ -120,3 +120,20 @@ declare module '@hookform/resolvers' {
   export * from '@hookform/resolvers/index';
 }
 
+declare global {
+  interface CashfreeCheckoutOptions {
+    paymentSessionId: string;
+    redirectTarget?: '_self' | '_blank' | '_top' | '_modal';
+  }
+
+  interface CashfreeInstance {
+    checkout: (options: CashfreeCheckoutOptions) => Promise<unknown>;
+  }
+
+  interface Window {
+    Cashfree?: (config: { mode: 'sandbox' | 'production' }) => CashfreeInstance;
+  }
+}
+
+export {};
+

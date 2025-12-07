@@ -233,6 +233,32 @@
 - [ ] Collect feedback
 - [ ] Fix critical issues
 
+## 11. Payments (Cashfree)
+
+### ✅ Environment & SDK
+- [ ] Populate `CASHFREE_*`, `NEXT_PUBLIC_CASHFREE_MODE`, and `NEXT_PUBLIC_APP_URL` in `.env.local`
+- [ ] Restart the dev server after editing env vars (ensures the SDK picks up changes)
+- [ ] Confirm the Cashfree script loads in the browser (no console errors)
+
+### ✅ Subscription Checkout
+- [ ] Login and navigate to `/billing`
+- [ ] Start a subscription upgrade and finish the sandbox payment (Cashfree test card/UPI)
+- [ ] Verify success toast appears after checkout
+- [ ] Confirm `users/{uid}/profile/{uid}.subscription` reflects the selected plan
+- [ ] Check that a document exists in `cashfree-orders` with `purchaseType=subscription`
+
+### ✅ Knowledge Coin Bundles
+- [ ] Initiate a coin bundle purchase from `/billing`
+- [ ] Complete sandbox payment and wait for confirmation toast
+- [ ] Verify `wallet.knowledgeCoins` increases by the bundle amount
+- [ ] Ensure an `earn` transaction entry is added under `users/{uid}/transactions`
+- [ ] Confirm the matching `cashfree-orders` doc has `fulfillment.processed=true`
+
+### ✅ Failure / Retry Scenarios
+- [ ] Cancel the Cashfree widget and verify the UI shows an appropriate error toast
+- [ ] Attempt to re-run `confirmCashfreePaymentAction` for an already processed order (should no-op)
+- [ ] Temporarily remove Cashfree env vars to ensure the UI surfaces a helpful configuration error
+
 ---
 
 ## Testing Notes
