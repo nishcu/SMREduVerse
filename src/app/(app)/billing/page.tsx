@@ -1,16 +1,20 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { getSubscriptionPlansAction, getCoinBundlesAction } from './actions';
 import type { SubscriptionPlan, CoinBundle } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SubscriptionPlanCard } from '@/components/subscription-plan-card';
 import { CoinBundleCard } from '@/components/coin-bundle-card';
 import { CreditCard, Coins } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 export default function BillingPage() {
     const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
     const [bundles, setBundles] = useState<CoinBundle[]>([]);
     const [isPending, setIsPending] = useState(true);
+    const searchParams = useSearchParams();
+    const { toast } = useToast();
 
     useEffect(() => {
         const loadData = async () => {
@@ -26,11 +30,30 @@ export default function BillingPage() {
             if (bundlesResult.success && bundlesResult.data) {
                 setBundles(bundlesResult.data);
             }
-            
+
             setIsPending(false);
         };
         loadData();
     }, []);
+
+    // Handle payment status from Cashfree redirect
+    useEffect(() => {
+        const paymentStatus = searchParams.get('payment');
+        const orderId = searchParams.get('order_id');
+
+        if (paymentStatus === 'success') {
+            toast({
+                title: 'Payment Successful!',
+                description: 'Your purchase has been completed successfully.',
+            });
+        } else if (paymentStatus === 'failure') {
+            toast({
+                variant: 'destructive',
+                title: 'Payment Failed',
+                description: 'Your payment could not be processed. Please try again.',
+            });
+        }
+    }, [searchParams, toast]);
 
     return (
         <div className="space-y-12">

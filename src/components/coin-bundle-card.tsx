@@ -3,29 +3,36 @@
 import { useState } from 'react';
 import type { CoinBundle } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Coins, Loader2, Zap } from 'lucide-react';
+import { Coins, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
+import { PaymentButton } from './cashfree-checkout';
+import { useRouter } from 'next/navigation';
 
 interface CoinBundleCardProps {
     bundle: CoinBundle;
 }
 
 export function CoinBundleCard({ bundle }: CoinBundleCardProps) {
-    const [isPurchasing, setIsPurchasing] = useState(false);
     const { toast } = useToast();
+    const router = useRouter();
 
-    const handlePurchase = async () => {
-        setIsPurchasing(true);
-        // Simulate a payment processing delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
+    const handlePaymentSuccess = () => {
         toast({
             title: 'Purchase Successful!',
             description: `You've added ${bundle.coins} Knowledge Coins to your wallet.`,
         });
-        setIsPurchasing(false);
+        // Refresh the page to update wallet balance
+        router.refresh();
+    };
+
+    const handlePaymentFailure = () => {
+        toast({
+            variant: 'destructive',
+            title: 'Purchase Failed',
+            description: 'Payment was not completed. Please try again.',
+        });
     };
 
     return (
@@ -45,16 +52,15 @@ export function CoinBundleCard({ bundle }: CoinBundleCardProps) {
                 <CardDescription>Knowledge Coins</CardDescription>
             </CardContent>
             <CardFooter>
-                <Button className="w-full" onClick={handlePurchase} disabled={isPurchasing}>
-                    {isPurchasing ? (
-                        <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Processing...
-                        </>
-                    ) : (
-                        `Buy at ${bundle.price}`
-                    )}
-                </Button>
+                <PaymentButton
+                    itemType="coin_bundle"
+                    itemId={bundle.id}
+                    amount={parseFloat(bundle.price.replace('₹', ''))}
+                    onSuccess={handlePaymentSuccess}
+                    onFailure={handlePaymentFailure}
+                >
+                    Buy at {bundle.price}
+                </PaymentButton>
             </CardFooter>
         </Card>
     );

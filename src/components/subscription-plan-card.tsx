@@ -4,27 +4,31 @@ import type { SubscriptionPlan } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle2, Loader2, Star } from 'lucide-react';
+import { CheckCircle2, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
+import { PaymentButton } from './cashfree-checkout';
 
 interface SubscriptionPlanCardProps {
     plan: SubscriptionPlan;
 }
 
 export function SubscriptionPlanCard({ plan }: SubscriptionPlanCardProps) {
-    const [isUpgrading, setIsUpgrading] = useState(false);
     const { toast } = useToast();
 
-    const handleUpgrade = async () => {
-        setIsUpgrading(true);
-        // Simulate a payment processing delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
+    const handlePaymentSuccess = () => {
         toast({
-            title: 'Upgrade Successful!',
-            description: `You are now subscribed to the ${plan.name} plan.`,
+            title: 'Subscription Activated!',
+            description: `Welcome to the ${plan.name} plan. Your subscription is now active.`,
         });
-        setIsUpgrading(false);
+    };
+
+    const handlePaymentFailure = () => {
+        toast({
+            variant: 'destructive',
+            title: 'Subscription Failed',
+            description: 'Your subscription could not be processed. Please try again.',
+        });
     };
 
     return (
@@ -53,16 +57,16 @@ export function SubscriptionPlanCard({ plan }: SubscriptionPlanCardProps) {
                 </ul>
             </CardContent>
             <CardFooter>
-                <Button className="w-full" size="lg" onClick={handleUpgrade} disabled={isUpgrading}>
-                    {isUpgrading ? (
-                        <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Upgrading...
-                        </>
-                    ) : (
-                        'Choose Plan'
-                    )}
-                </Button>
+                <PaymentButton
+                    itemType="subscription"
+                    itemId={plan.id}
+                    amount={parseFloat(plan.price.replace(/[^0-9.]/g, ''))}
+                    onSuccess={handlePaymentSuccess}
+                    onFailure={handlePaymentFailure}
+                    className="w-full"
+                >
+                    Choose Plan
+                </PaymentButton>
             </CardFooter>
         </Card>
     );
