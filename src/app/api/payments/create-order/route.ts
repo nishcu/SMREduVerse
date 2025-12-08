@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
                 customer_phone: '9999999999', // This should be dynamic
             },
             order_meta: {
-                return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/success?order_id={order_id}`,
+                return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout-dynamic/success?order_id={order_id}`,
                 notify_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payments/webhook`,
             },
             order_tags: {
