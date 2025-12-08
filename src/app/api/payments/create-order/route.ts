@@ -14,8 +14,8 @@ export async function POST(request: NextRequest) {
 
         // Initialize Cashfree
         console.log('Initializing Cashfree with environment:', process.env.CASHFREE_ENVIRONMENT);
-        console.log('Client ID:', process.env.CASHFREE_CLIENT_ID ? 'Set' : 'Missing');
-        console.log('Client Secret:', process.env.CASHFREE_CLIENT_SECRET ? 'Set' : 'Missing');
+        console.log('Client ID:', process.env.CASHFREE_CLIENT_ID ? `${process.env.CASHFREE_CLIENT_ID.substring(0, 10)}...` : 'Missing');
+        console.log('Client Secret:', process.env.CASHFREE_CLIENT_SECRET ? `${process.env.CASHFREE_CLIENT_SECRET.substring(0, 10)}...` : 'Missing');
 
         const cashfree = new Cashfree(
             process.env.CASHFREE_ENVIRONMENT === 'production'
@@ -55,10 +55,24 @@ export async function POST(request: NextRequest) {
         try {
             response = await cashfree.PGCreateOrder('2023-08-01', orderRequest);
             console.log('Cashfree response:', response);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Cashfree API error:', error);
+            console.error('Error details:', {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status,
+                config: {
+                    url: error.config?.url,
+                    method: error.config?.method,
+                    headers: error.config?.headers
+                }
+            });
             return NextResponse.json(
-                { error: 'Failed to create payment order', details: error.message },
+                {
+                    error: 'Failed to create payment order',
+                    details: error.message,
+                    cashfree_status: error.response?.status
+                },
                 { status: 500 }
             );
         }
