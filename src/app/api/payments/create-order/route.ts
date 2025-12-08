@@ -13,9 +13,24 @@ export async function POST(request: NextRequest) {
         }
 
         // Initialize Cashfree
-        console.log('Initializing Cashfree with environment:', process.env.CASHFREE_ENVIRONMENT);
-        console.log('Client ID:', process.env.CASHFREE_CLIENT_ID ? `${process.env.CASHFREE_CLIENT_ID.substring(0, 10)}...` : 'Missing');
-        console.log('Client Secret:', process.env.CASHFREE_CLIENT_SECRET ? `${process.env.CASHFREE_CLIENT_SECRET.substring(0, 10)}...` : 'Missing');
+        console.log('🔍 Cashfree Debug Info:');
+        console.log('- Environment:', process.env.CASHFREE_ENVIRONMENT);
+        console.log('- Client ID starts with:', process.env.CASHFREE_CLIENT_ID?.substring(0, 10));
+        console.log('- Client Secret starts with:', process.env.CASHFREE_CLIENT_SECRET?.substring(0, 10));
+        console.log('- Using environment:', process.env.CASHFREE_ENVIRONMENT === 'production' ? 'PRODUCTION' : 'SANDBOX');
+
+        // Validate credentials format
+        if (!process.env.CASHFREE_CLIENT_ID?.startsWith('1141439')) {
+            console.error('❌ Client ID does not start with expected prefix');
+        } else {
+            console.log('✅ Client ID format looks correct');
+        }
+
+        if (!process.env.CASHFREE_CLIENT_SECRET?.startsWith('cfsk_ma_prod')) {
+            console.error('❌ Client Secret does not start with expected prefix');
+        } else {
+            console.log('✅ Client Secret format looks correct');
+        }
 
         const cashfree = new Cashfree(
             process.env.CASHFREE_ENVIRONMENT === 'production'
@@ -24,7 +39,7 @@ export async function POST(request: NextRequest) {
             process.env.CASHFREE_CLIENT_ID,
             process.env.CASHFREE_CLIENT_SECRET
         );
-        console.log('Cashfree initialized successfully');
+        console.log('✅ Cashfree client created successfully');
 
         // Generate unique order ID
         const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

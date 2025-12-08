@@ -17,6 +17,8 @@ export async function GET() {
         );
 
         // Try a simple API call to test authentication
+        console.log('🧪 Testing Cashfree API call...');
+
         try {
             // This will fail but will tell us if auth works
             await cashfree.PGCreateOrder('2023-08-01', {
@@ -36,25 +38,40 @@ export async function GET() {
             });
 
         } catch (apiError: any) {
-            console.log('API Error details:', {
+            console.log('🚨 API Error details:', {
                 status: apiError.response?.status,
+                statusText: apiError.response?.statusText,
                 message: apiError.message,
-                data: apiError.response?.data
+                data: apiError.response?.data,
+                url: apiError.config?.url,
+                method: apiError.config?.method
             });
 
             if (apiError.response?.status === 401) {
                 return NextResponse.json({
                     status: 'auth_failed',
-                    message: 'Cashfree authentication failed - check credentials',
+                    message: 'Cashfree authentication failed - invalid credentials or environment mismatch',
                     error: apiError.message,
-                    details: apiError.response?.data
+                    details: apiError.response?.data,
+                    suggestion: 'Check if production credentials are being used with sandbox environment or vice versa'
                 }, { status: 401 });
+            }
+
+            if (apiError.response?.status === 403) {
+                return NextResponse.json({
+                    status: 'forbidden',
+                    message: 'Cashfree access forbidden - check account permissions',
+                    error: apiError.message,
+                    details: apiError.response?.data,
+                    suggestion: 'Contact Cashfree support - your account may not have production access'
+                }, { status: 403 });
             }
 
             return NextResponse.json({
                 status: 'api_error',
                 message: 'Cashfree API error',
-                error: apiError.message
+                error: apiError.message,
+                details: apiError.response?.data
             }, { status: 500 });
         }
 
