@@ -42,13 +42,6 @@ export interface User {
   wallet: {
       knowledgeCoins: number;
   },
-  subscription?: {
-    planId: string;
-    planName: string;
-    status: 'active' | 'inactive' | 'expired' | 'cancelled';
-    activatedAt: Date | Timestamp;
-    expiresAt: Date | Timestamp;
-  },
   knowledgePoints: number;
   grade?: string;
   school?: string;
@@ -334,24 +327,6 @@ export interface CoinBundle {
     coins: number;
     price: string;
     isPopular?: boolean;
-}
-
-export interface PaymentOrder {
-    id: string;
-    orderId: string;
-    userId: string;
-    amount: number;
-    currency: string;
-    status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
-    paymentMethod?: string;
-    transactionId?: string;
-    itemType: 'coin_bundle' | 'subscription' | 'course' | 'marketplace_item';
-    itemId: string;
-    itemDetails?: any;
-    createdAt: Timestamp;
-    updatedAt: Timestamp;
-    cashfreeOrderId?: string;
-    cashfreePaymentId?: string;
 }
 
 export interface Notification {

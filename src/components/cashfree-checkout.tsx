@@ -1,264 +1,101 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
+import { useState, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, CreditCard } from 'lucide-react';
-
-declare global {
-    interface Window {
-        Cashfree: any;
-    }
-}
-
-interface CashfreeCheckoutProps {
-    orderToken: string;
-    orderId: string;
-    onSuccess?: (data: any) => void;
-    onFailure?: (data: any) => void;
-    children?: React.ReactNode;
-}
-
-export function CashfreeCheckout({
-    orderToken,
-    orderId,
-    onSuccess,
-    onFailure,
-    children
-}: CashfreeCheckoutProps) {
-    const { firebaseUser } = useAuth();
-    const { toast } = useToast();
-    const [isLoading, setIsLoading] = useState(false);
-    const [isScriptLoaded, setIsScriptLoaded] = useState(false);
-
-    // Load Cashfree SDK script
-    useEffect(() => {
-        if (window.Cashfree) {
-            setIsScriptLoaded(true);
-            return;
-        }
-
-        const script = document.createElement('script');
-        script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
-        script.onload = () => setIsScriptLoaded(true);
-        script.onerror = () => {
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Failed to load payment system. Please try again.',
-            });
-        };
-        document.head.appendChild(script);
-
-        return () => {
-            if (document.head.contains(script)) {
-                document.head.removeChild(script);
-            }
-        };
-    }, [toast]);
-
-    const handlePayment = async () => {
-        if (!firebaseUser || !isScriptLoaded) return;
-
-        setIsLoading(true);
-
-        try {
-            const cashfree = new window.Cashfree();
-
-            const checkoutOptions = {
-                paymentSessionId: orderToken, // This should be the payment_session_id from the order
-                redirectTarget: "_modal", // or "_self" for same window
-            };
-
-            cashfree.checkout(checkoutOptions).then((result: any) => {
-                if (result.error) {
-                    console.error('Payment failed:', result.error);
-                    toast({
-                        variant: 'destructive',
-                        title: 'Payment Failed',
-                        description: result.error.message || 'Payment was not completed successfully.',
-                    });
-                    onFailure?.(result);
-                } else if (result.paymentDetails) {
-                    console.log('Payment successful:', result.paymentDetails);
-                    toast({
-                        title: 'Payment Successful!',
-                        description: 'Your payment has been processed successfully.',
-                    });
-                    onSuccess?.(result);
-                }
-                setIsLoading(false);
-            });
-
-        } catch (error) {
-            console.error('Payment error:', error);
-            toast({
-                variant: 'destructive',
-                title: 'Payment Error',
-                description: 'An error occurred while processing your payment.',
-            });
-            setIsLoading(false);
-        }
-    };
-
-    return (
-        <Button
-            onClick={handlePayment}
-            disabled={!isScriptLoaded || isLoading}
-            className="w-full"
-        >
-            {isLoading ? (
-                <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing Payment...
-                </>
-            ) : (
-                <>
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    {children || 'Pay Now'}
-                </>
-            )}
-        </Button>
-    );
-}
+import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface PaymentButtonProps {
-    itemType: 'coin_bundle' | 'subscription' | 'course' | 'marketplace_item';
+    itemType: 'subscription' | 'coins';
     itemId: string;
     amount: number;
-    currency?: string;
-    children?: React.ReactNode;
-    onSuccess?: () => void;
-    onFailure?: () => void;
+    onSuccess: (data: any) => void;
+    onFailure: (error: any) => void;
+    className?: string;
+    children: ReactNode;
 }
 
 export function PaymentButton({
     itemType,
     itemId,
     amount,
-    currency = 'INR',
-    children,
     onSuccess,
-    onFailure
+    onFailure,
+    className,
+    children
 }: PaymentButtonProps) {
-    const { firebaseUser } = useAuth();
-    const { toast } = useToast();
-    const [isCreatingOrder, setIsCreatingOrder] = useState(false);
-    const [orderData, setOrderData] = useState<{
-        orderId: string;
-        orderToken: string;
-        paymentId: string;
-    } | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
 
-    const createOrder = async () => {
-        if (!firebaseUser) return;
-
-        setIsCreatingOrder(true);
+    const handlePayment = async () => {
+        setIsProcessing(true);
 
         try {
-            const idToken = await firebaseUser.getIdToken();
-
+            // Create payment order
+            console.log('Creating payment order for:', { itemType, itemId, amount });
             const response = await fetch('/api/payments/create-order', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`,
                 },
                 body: JSON.stringify({
                     itemType,
                     itemId,
-                    amount: amount.toString(),
-                    currency,
+                    amount,
                 }),
             });
 
-            const result = await response.json();
-
+            console.log('API Response status:', response.status);
             if (!response.ok) {
-                throw new Error(result.error || 'Failed to create payment order');
+                const errorText = await response.text();
+                console.error('API Error response:', errorText);
+                throw new Error(`Failed to create payment order: ${response.status} ${errorText}`);
             }
 
-            setOrderData(result.data);
+            const orderData = await response.json();
+            console.log('Order data received:', orderData);
 
+            // Initialize Cashfree checkout
+            if (typeof window !== 'undefined' && (window as any).Cashfree) {
+                const cashfree = (window as any).Cashfree({
+                    mode: process.env.NEXT_PUBLIC_CASHFREE_MODE || 'sandbox',
+                });
+
+                const checkoutOptions = {
+                    paymentSessionId: orderData.payment_session_id,
+                    redirectTarget: '_self',
+                };
+
+                cashfree.checkout(checkoutOptions).then((result: any) => {
+                    if (result.error) {
+                        onFailure(result.error);
+                    } else if (result.paymentDetails) {
+                        onSuccess(result.paymentDetails);
+                    }
+                });
+            } else {
+                throw new Error('Cashfree SDK not loaded');
+            }
         } catch (error) {
             console.error('Error creating order:', error);
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Failed to initiate payment. Please try again.',
-            });
+            onFailure(error);
         } finally {
-            setIsCreatingOrder(false);
+            setIsProcessing(false);
         }
     };
-
-    const handlePaymentSuccess = async (data: any) => {
-        // Verify payment with backend
-        try {
-            const idToken = await firebaseUser!.getIdToken();
-
-            const response = await fetch('/api/payments/verify', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`,
-                },
-                body: JSON.stringify({
-                    orderId: orderData?.orderId,
-                }),
-            });
-
-            const result = await response.json();
-
-            if (response.ok && result.success) {
-                onSuccess?.();
-            } else {
-                throw new Error('Payment verification failed');
-            }
-        } catch (error) {
-            console.error('Payment verification error:', error);
-            toast({
-                variant: 'destructive',
-                title: 'Verification Error',
-                description: 'Payment was processed but verification failed. Please contact support.',
-            });
-        }
-    };
-
-    const handlePaymentFailure = (data: any) => {
-        onFailure?.();
-    };
-
-    if (orderData) {
-        return (
-            <CashfreeCheckout
-                orderToken={orderData.orderToken}
-                orderId={orderData.orderId}
-                onSuccess={handlePaymentSuccess}
-                onFailure={handlePaymentFailure}
-            >
-                {children || `Pay ₹${amount}`}
-            </CashfreeCheckout>
-        );
-    }
 
     return (
         <Button
-            onClick={createOrder}
-            disabled={isCreatingOrder}
-            className="w-full"
+            onClick={handlePayment}
+            disabled={isProcessing}
+            className={cn(className)}
         >
-            {isCreatingOrder ? (
+            {isProcessing ? (
                 <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating Order...
+                    Processing...
                 </>
             ) : (
-                <>
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    {children || `Pay ₹${amount}`}
-                </>
+                children
             )}
         </Button>
     );

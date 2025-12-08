@@ -9,7 +9,6 @@ import { Coins, Loader2, ShoppingBag, Star, Sparkles, Tag } from 'lucide-react';
 import type { PartnerProduct } from '@/lib/types';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { PaymentButton } from './cashfree-checkout';
 
 interface ProductCardProps {
   product: PartnerProduct;
@@ -20,32 +19,17 @@ export function ProductCard({ product, viewMode = 'grid' }: ProductCardProps) {
     const [isPurchasing, setIsPurchasing] = useState(false);
     const { toast } = useToast();
 
-    const handleCoinPurchase = async () => {
+    const handlePurchase = async (currency: 'rupees' | 'coins') => {
         setIsPurchasing(true);
-        // Simulate coin redemption processing
+        // Simulate payment processing
         await new Promise(resolve => setTimeout(resolve, 1500));
-
-        toast({
-            title: 'Purchase Successful!',
-            description: `You have purchased "${product.title}" using coins.`,
-        });
-
-        setIsPurchasing(false);
-    };
-
-    const handlePaymentSuccess = () => {
+        
         toast({
             title: 'Purchase Successful!',
             description: `You have purchased "${product.title}".`,
         });
-    };
-
-    const handlePaymentFailure = () => {
-        toast({
-            variant: 'destructive',
-            title: 'Purchase Failed',
-            description: 'Payment was not completed. Please try again.',
-        });
+        
+        setIsPurchasing(false);
     };
 
     if (viewMode === 'list') {
@@ -92,21 +76,13 @@ export function ProductCard({ product, viewMode = 'grid' }: ProductCardProps) {
                     </div>
                     <div className="flex gap-2 mt-4">
                         {product.priceInRupees && (
-                            <div className="flex-1">
-                                <PaymentButton
-                                    itemType="marketplace_item"
-                                    itemId={product.id}
-                                    amount={product.priceInRupees}
-                                    onSuccess={handlePaymentSuccess}
-                                    onFailure={handlePaymentFailure}
-                                >
-                                    <ShoppingBag className="h-4 w-4 mr-2" />
-                                    ₹{product.priceInRupees.toLocaleString()}
-                                </PaymentButton>
-                            </div>
+                            <Button className="flex-1" onClick={() => handlePurchase('rupees')} disabled={isPurchasing}>
+                                {isPurchasing ? <Loader2 className="animate-spin h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
+                                <span className="ml-2">₹{product.priceInRupees.toLocaleString()}</span>
+                            </Button>
                         )}
                         {product.priceInCoins && (
-                            <Button variant="secondary" className="flex-1" onClick={handleCoinPurchase} disabled={isPurchasing}>
+                            <Button variant="secondary" className="flex-1" onClick={() => handlePurchase('coins')} disabled={isPurchasing}>
                                 {isPurchasing ? <Loader2 className="animate-spin h-4 w-4" /> : <Coins className="h-4 w-4" />}
                                 <span className="ml-2">{product.priceInCoins.toLocaleString()} Coins</span>
                             </Button>
@@ -158,19 +134,13 @@ export function ProductCard({ product, viewMode = 'grid' }: ProductCardProps) {
             </CardContent>
             <CardFooter className="p-4 pt-0 flex flex-col gap-2">
                 {product.priceInRupees && (
-                    <PaymentButton
-                        itemType="marketplace_item"
-                        itemId={product.id}
-                        amount={product.priceInRupees}
-                        onSuccess={handlePaymentSuccess}
-                        onFailure={handlePaymentFailure}
-                    >
-                        <ShoppingBag className="h-4 w-4 mr-2" />
-                        Buy for ₹{product.priceInRupees.toLocaleString()}
-                    </PaymentButton>
+                    <Button className="w-full" onClick={() => handlePurchase('rupees')} disabled={isPurchasing}>
+                        {isPurchasing ? <Loader2 className="animate-spin h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
+                        <span className="ml-2">Buy for ₹{product.priceInRupees.toLocaleString()}</span>
+                    </Button>
                 )}
                 {product.priceInCoins && (
-                     <Button variant="secondary" className="w-full" onClick={handleCoinPurchase} disabled={isPurchasing}>
+                     <Button variant="secondary" className="w-full" onClick={() => handlePurchase('coins')} disabled={isPurchasing}>
                         {isPurchasing ? <Loader2 className="animate-spin h-4 w-4" /> : <Coins className="h-4 w-4" />}
                         <span className="ml-2">Redeem for {product.priceInCoins.toLocaleString()} Coins</span>
                     </Button>

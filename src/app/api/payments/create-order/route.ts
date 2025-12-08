@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
-import CashfreeService from '@/lib/cashfree';
-import type { PaymentOrder } from '@/lib/types';
+import { Cashfree, CFEnvironment } from 'cashfree-pg';
 
 export async function POST(request: NextRequest) {
     try {
-        const { itemType, itemId, amount, currency = 'INR' } = await request.json();
+        const { itemType, itemId, amount } = await request.json();
 
-        // Validate required fields
         if (!itemType || !itemId || !amount) {
             return NextResponse.json(
                 { error: 'Missing required fields: itemType, itemId, amount' },
@@ -15,85 +12,76 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Get Firebase auth token from request
-        const authHeader = request.headers.get('authorization');
-        if (!authHeader?.startsWith('Bearer ')) {
-            return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
-            );
-        }
+        // Initialize Cashfree
+        console.log('Initializing Cashfree with environment:', process.env.CASHFREE_ENVIRONMENT);
+        console.log('Client ID:', process.env.CASHFREE_CLIENT_ID ? 'Set' : 'Missing');
+        console.log('Client Secret:', process.env.CASHFREE_CLIENT_SECRET ? 'Set' : 'Missing');
 
-        const idToken = authHeader.split('Bearer ')[1];
-        const decodedToken = await getAdminAuth().verifyIdToken(idToken);
-        const userId = decodedToken.uid;
-
-        // Get user details
-        const db = getAdminDb();
-        const userDoc = await db.collection('users').doc(userId).collection('profile').doc(userId).get();
-
-        if (!userDoc.exists) {
-            return NextResponse.json(
-                { error: 'User not found' },
-                { status: 404 }
-            );
-        }
-
-        const userData = userDoc.data();
-        const userEmail = userData?.email || decodedToken.email;
-        const userPhone = userData?.mobileNumber || '9999999999'; // Default fallback
-        const userName = userData?.name || 'User';
+        const cashfree = new Cashfree(
+            process.env.CASHFREE_ENVIRONMENT === 'production'
+                ? CFEnvironment.PRODUCTION
+                : CFEnvironment.SANDBOX,
+            process.env.CASHFREE_CLIENT_ID,
+            process.env.CASHFREE_CLIENT_SECRET
+        );
+        console.log('Cashfree initialized successfully');
 
         // Generate unique order ID
-        const orderId = CashfreeService.generateOrderId('GENZEERR');
+        const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-        // Create payment order with Cashfree
-        const cashfreeOrder = await CashfreeService.createOrder({
-            orderId,
-            orderAmount: parseFloat(amount),
-            orderCurrency: currency,
-            customerDetails: {
-                customerId: userId,
-                customerEmail: userEmail,
-                customerPhone: userPhone,
-                customerName: userName,
+        // Create order request
+        const orderRequest = {
+            order_id: orderId,
+            order_amount: parseFloat(amount.toString()),
+            order_currency: 'INR',
+            customer_details: {
+                customer_id: `user_${itemId}`,
+                customer_email: 'user@example.com', // This should be dynamic
+                customer_phone: '9999999999', // This should be dynamic
             },
-            orderMeta: {
-                returnUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/checkout/success`,
-                notifyUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/payments/webhook`,
+            order_meta: {
+                return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/success?order_id={order_id}`,
+                notify_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payments/webhook`,
             },
-        });
-
-        // Store payment order in Firestore
-        const paymentOrder: Omit<PaymentOrder, 'id'> = {
-            orderId: cashfreeOrder.orderId,
-            userId,
-            amount: cashfreeOrder.orderAmount,
-            currency: cashfreeOrder.orderCurrency,
-            status: 'PENDING',
-            itemType,
-            itemId,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            cashfreeOrderId: cashfreeOrder.orderId,
+            order_tags: {
+                item_type: itemType,
+                item_id: itemId,
+            },
         };
 
-        const paymentRef = await db.collection('payments').add(paymentOrder);
+        // Create order using Cashfree SDK
+        console.log('Creating order with request:', orderRequest);
+        let response;
+        try {
+            response = await cashfree.PGCreateOrder('2023-08-01', orderRequest);
+            console.log('Cashfree response:', response);
+        } catch (error) {
+            console.error('Cashfree API error:', error);
+            return NextResponse.json(
+                { error: 'Failed to create payment order', details: error.message },
+                { status: 500 }
+            );
+        }
+
+        if (!response || !response.data) {
+            console.error('Cashfree order creation failed:', response);
+            return NextResponse.json(
+                { error: 'Failed to create payment order' },
+                { status: 500 }
+            );
+        }
 
         return NextResponse.json({
-            success: true,
-            data: {
-                orderId: cashfreeOrder.orderId,
-                orderToken: cashfreeOrder.orderToken,
-                paymentSessionId: cashfreeOrder.paymentSessionId,
-                paymentId: paymentRef.id,
-            },
+            order_id: response.data.order_id,
+            payment_session_id: response.data.payment_session_id,
+            order_amount: response.data.order_amount,
+            order_currency: response.data.order_currency,
         });
 
     } catch (error) {
         console.error('Error creating payment order:', error);
         return NextResponse.json(
-            { error: 'Failed to create payment order' },
+            { error: 'Internal server error' },
             { status: 500 }
         );
     }
