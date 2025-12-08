@@ -8,7 +8,7 @@ import { XCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function CheckoutFailurePage() {
+function CheckoutFailurePage() {
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -77,3 +77,9 @@ export default function CheckoutFailurePage() {
         </div>
     );
 }
+
+// Export with SSR disabled
+import { default as dynamic } from 'next/dynamic';
+export default dynamic(() => Promise.resolve(CheckoutFailurePage), {
+    ssr: false,
+});

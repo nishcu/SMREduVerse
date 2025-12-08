@@ -2,14 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-
-// Force dynamic rendering to prevent prerendering issues
-export const dynamic = 'force-dynamic';
 import { CheckCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function CheckoutSuccessPage() {
+function CheckoutSuccessPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const [isVerifying, setIsVerifying] = useState(true);
@@ -115,3 +112,9 @@ export default function CheckoutSuccessPage() {
         </div>
     );
 }
+
+// Export with SSR disabled
+import { default as dynamic } from 'next/dynamic';
+export default dynamic(() => Promise.resolve(CheckoutSuccessPage), {
+    ssr: false,
+});
