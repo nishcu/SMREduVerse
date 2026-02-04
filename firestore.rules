@@ -1,0 +1,215 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+    function isInstructor(courseId) {
+      return isSignedIn() && get(/databases/$(database)/documents/courses/$(courseId)).data.instructorId == request.auth.uid;
+    }
+    function isSuperAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)/profile/$(request.auth.uid)).data.isSuperAdmin == true;
+    }
+    function isPartner(partnerId) {
+      return isSignedIn() && get(/databases/$(database)/documents/partners/$(partnerId)).data.ownerId == request.auth.uid;
+    }
+    function isChatParticipant(chatId) {
+      return isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+    }
+
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users & Profiles
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isSuperAdmin();
+      allow create: if isOwner(userId);
+      allow update, delete: if isOwner(userId) || isSuperAdmin();
+      
+      match /profile/{profileId} {
+        allow get: if true;  // Public view profile
+        allow list: if isOwner(userId);  // Owner lists own
+        allow create: if isOwner(userId) && profileId == userId && request.resource.data.id == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+        allow delete: if isExistingOwner(userId) || isSuperAdmin();
+      }
+      match /enrollments/{enrollmentId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if isExistingOwner(userId);  // Progress tracking
+        allow delete: if isExistingOwner(userId) || isSuperAdmin();
+      }
+      match /transactions/{transactionId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update, delete: if isOwner(userId) || isSuperAdmin();
+      }
+      match /coupons/{couponId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) || isSuperAdmin();
+        allow update, delete: if isOwner(userId) || isSuperAdmin();
+      }
+      match /quest-progress/{progressId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if isExistingOwner(userId);
+        allow delete: if isOwner(userId) || isSuperAdmin();
+      }
+      match /followers/{followerUid} {
+        allow get, list: if true;  // Public follower lists
+        allow create: if isSignedIn() && request.auth.uid == followerUid && followerUid != userId;
+        allow delete: if isOwner(userId) || request.auth.uid == followerUid || isSuperAdmin();
+      }
+      match /following/{followedUid} {
+        allow get, list: if true;  // Public following lists
+        allow create: if isSignedIn() && request.auth.uid == userId && userId != followedUid;
+        allow delete: if isOwner(userId) || isSuperAdmin();
+      }
+    }
+    match /{path=**}/profile/{profileId} {
+      allow list, get: if true;  // Tutors directory, global search
+    }
+
+    // Posts
+    match /posts/{postId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.author.uid == request.auth.uid;
+      allow update: if resource.data.author.uid == request.auth.uid || isSuperAdmin();
+      allow delete: if resource.data.author.uid == request.auth.uid || isSuperAdmin();
+      
+      match /comments/{commentId} {
+        allow get, list: if true;
+        allow create: if isSignedIn() && request.resource.data.author.uid == request.auth.uid;
+        allow update, delete: if resource.data.author.uid == request.auth.uid || isSuperAdmin();
+      }
+      match /likes/{likeId} {
+        allow get, list: if true;
+        allow create: if isSignedIn() && likeId == request.auth.uid;
+        allow delete: if likeId == request.auth.uid || isSuperAdmin();
+      }
+    }
+
+    // Courses
+    match /courses/{courseId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.instructorId == request.auth.uid;
+      allow update: if isInstructor(courseId) || isSuperAdmin();
+      allow delete: if isInstructor(courseId) || isSuperAdmin();
+      
+      match /chapters/{chapterId} {
+        allow get, list: if true;
+        allow create, update, delete: if isInstructor(/$(courseId)) || isSuperAdmin();
+        
+        match /lessons/{lessonId} {
+          allow get, list: if true;
+          allow create, update, delete: if isInstructor(/$(courseId)) || isSuperAdmin();
+        }
+      }
+    }
+
+    // Chats
+    match /chats/{chatId} {
+      allow list: if isSignedIn();
+      allow get: if isChatParticipant(chatId);
+      allow create: if isSignedIn() && request.auth.uid in request.resource.data.participants;
+      allow update: if isChatParticipant(chatId);
+      allow delete: if isSuperAdmin();
+      
+      match /messages/{messageId} {
+        allow get, list: if isChatParticipant(/$(chatId));
+        allow create: if isChatParticipant(/$(chatId)) && request.resource.data.senderId == request.auth.uid;
+        allow update, delete: if resource.data.senderId == request.auth.uid || isSuperAdmin();
+      }
+    }
+
+    // Partners & Marketplace
+    match /partners/{partnerId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isPartner(partnerId) || isSuperAdmin();
+      allow delete: if isPartner(partnerId) || isSuperAdmin();
+      
+      match /courses/{courseId} {
+        allow get, list: if true;
+        allow create, update, delete: if isPartner(/$(partnerId)) || isSuperAdmin();
+      }
+      match /products/{productId} {
+        allow get, list: if true;
+        allow create, update, delete: if isPartner(/$(partnerId)) || isSuperAdmin();
+      }
+    }
+    match /{path=**}/products/{productId} {
+      allow list, get: if true;
+    }
+    match /partner-applications/{applicationId} {
+      allow get, list: if isSuperAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // Quests
+    match /quests/{questId} {
+      allow get, list: if true;
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    // Study Rooms
+    match /study-rooms/{roomId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if resource.data.creatorId == request.auth.uid || isSuperAdmin();
+      allow delete: if isSuperAdmin();
+      
+      match /messages/{messageId} {
+        allow get, list: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update, delete: if resource.data.senderId == request.auth.uid || isSuperAdmin();
+      }
+    }
+
+    // Contests
+    match /contests/{contestId} {
+      allow get, list: if true;
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    // Talents
+    match /talents/{talentId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if resource.data.ownerId == request.auth.uid || isSuperAdmin();
+    }
+
+    // App Settings
+    match /app-settings/economy {
+      allow get: if true;
+      allow create, update, delete: if isSuperAdmin();
+    }
+    match /app-settings/monetization/subscription-plans/{planId} {
+      allow get, list: if true;
+      allow create, update, delete: if isSuperAdmin();
+    }
+    match /app-settings/monetization/coin-bundles/{bundleId} {
+      allow get, list: if true;
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    // Presence (Online/Offline Status)
+    match /presence/{userId} {
+      // Allow authenticated users to read any user's presence (for online status)
+      allow read: if isSignedIn();
+      // Allow users to write only their own presence document
+      allow write: if isOwner(userId);
+    }
+  }
+}
