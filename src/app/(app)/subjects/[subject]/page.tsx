@@ -1,6 +1,7 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { use } from 'react';
+import { useRouter } from 'next/navigation';
 import { PostsFeed } from '@/app/(app)/social/posts-feed';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -14,10 +15,9 @@ const formatSubjectTitle = (subjectKey: string) => {
     .join(' ');
 };
 
-export default function SubjectDetailPage() {
-  const params = useParams();
+export default function SubjectDetailPage({ params }: { params: Promise<{ subject: string }> }) {
+  const { subject: subjectKey } = use(params);
   const router = useRouter();
-  const subjectKey = params.subject as string;
   const subjectTitle = formatSubjectTitle(subjectKey);
 
   return (

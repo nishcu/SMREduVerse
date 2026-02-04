@@ -4,16 +4,17 @@ import { doc, DocumentReference } from 'firebase/firestore';
 import { notFound } from 'next/navigation';
 import { useDoc } from '@/firebase';
 import { db } from '@/lib/firebase';
-import { useMemo } from 'react';
+import { use, useMemo } from 'react';
 import type { StudyRoom } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChatWindow } from '@/components/chat/chat-window';
 import { useAuth } from '@/hooks/use-auth';
 
-export default function StudyRoomPage({ params }: { params: { id: string } }) {
+export default function StudyRoomPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const { user, loading: userLoading } = useAuth();
   
-  const roomRef = useMemo(() => doc(db, 'study-rooms', params.id), [params.id]);
+  const roomRef = useMemo(() => doc(db, 'study-rooms', id), [id]);
   const { data: room, loading: roomLoading } = useDoc<StudyRoom>(roomRef as DocumentReference<StudyRoom> | null);
 
   const loading = userLoading || roomLoading;

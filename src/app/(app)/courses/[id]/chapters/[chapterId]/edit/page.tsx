@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { use } from 'react';
+import { useRouter } from 'next/navigation';
 import { useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, DocumentReference } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -30,10 +31,9 @@ function EditChapterPageSkeleton() {
   );
 }
 
-export default function EditChapterPage() {
-  const params = useParams();
+export default function EditChapterPage({ params }: { params: Promise<{ id: string; chapterId: string }> }) {
+  const { id: courseId, chapterId } = use(params);
   const router = useRouter();
-  const { id: courseId, chapterId } = params as { id: string; chapterId: string };
 
   const chapterRef = doc(db, 'courses', courseId, 'chapters', chapterId) as DocumentReference<Chapter>;
   const { data: chapter, loading: loadingChapter, error: errorChapter } = useDoc<Chapter>(chapterRef);

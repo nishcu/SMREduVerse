@@ -17,14 +17,15 @@ import { CourseCurriculum } from '@/components/course-curriculum';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import { useDoc } from '@/firebase';
-import { useMemo } from 'react';
+import { use, useMemo } from 'react';
 
-export default function CourseDetailPage({ params }: { params: { id: string } }) {
+export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const { user } = useAuth();
-  const courseRef = useMemo(() => doc(db, 'courses', params.id) as DocumentReference<Course>, [params.id]);
+  const courseRef = useMemo(() => doc(db, 'courses', id) as DocumentReference<Course>, [id]);
   const { data: course, loading: loadingCourse, error: errorCourse } = useDoc<Course>(courseRef);
 
-  const enrollmentRef = useMemo(() => (user ? doc(db, `users/${user.id}/enrollments`, params.id) : null), [user?.id, params.id]);
+  const enrollmentRef = useMemo(() => (user ? doc(db, `users/${user.id}/enrollments`, id) : null), [user?.id, id]);
   const { data: enrollment, loading: loadingEnrollment, error: errorEnrollment } = useDoc<Enrollment>(enrollmentRef as DocumentReference<Enrollment> | null);
 
   const loading = loadingCourse || loadingEnrollment;

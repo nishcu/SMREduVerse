@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
-import { notFound, useParams } from 'next/navigation';
+import { use, useMemo } from 'react';
+import { notFound } from 'next/navigation';
 import { useDoc } from '@/firebase';
 import { db } from '@/lib/firebase';
 import { doc, DocumentReference } from 'firebase/firestore';
@@ -35,11 +35,12 @@ function ProfileSkeleton() {
 
 export default function ProfileLayout({
   children,
+  params,
 }: {
   children: React.ReactNode;
+  params: Promise<{ uid: string }>;
 }) {
-  const params = useParams();
-  const uid = params.uid as string;
+  const { uid } = use(params);
 
   const userRef = useMemo(
     () => (uid ? (doc(db, 'users', uid, 'profile', uid) as DocumentReference<User>) : null),

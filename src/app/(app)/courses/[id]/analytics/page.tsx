@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { use } from 'react';
 import { useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, DocumentReference } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -14,10 +14,9 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
-export default function CourseAnalyticsPage() {
-  const params = useParams();
+export default function CourseAnalyticsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: courseId } = use(params);
   const { user } = useAuth();
-  const courseId = params.id as string;
 
   const courseRef = doc(db, 'courses', courseId) as DocumentReference<Course>;
   const { data: course, loading: loadingCourse } = useDoc<Course>(courseRef);

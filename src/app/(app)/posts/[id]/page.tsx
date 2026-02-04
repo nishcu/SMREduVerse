@@ -4,7 +4,7 @@ import { doc, DocumentReference } from 'firebase/firestore';
 import { notFound } from 'next/navigation';
 import { useDoc } from '@/firebase';
 import { db } from '@/lib/firebase';
-import { useMemo, useState, useEffect } from 'react';
+import { use, useMemo, useState, useEffect } from 'react';
 import type { Post } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
@@ -28,13 +28,14 @@ import { CommentDialog } from '@/components/comment-dialog';
 import { toggleLikeAction, checkLikedAction, getLikedUsersAction, toggleFollowAction, checkFollowingAction } from '@/app/(app)/social/actions';
 import { getOrCreateChatAction } from '@/app/(app)/chats/actions';
 
-export default function PostDetailPage({ params }: { params: { id: string } }) {
+export default function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
   const { user, firebaseUser } = useAuth();
   const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
   
-  const postRef = useMemo(() => doc(db, 'posts', params.id) as DocumentReference<Post>, [params.id]);
+  const postRef = useMemo(() => doc(db, 'posts', id) as DocumentReference<Post>, [id]);
   const { data: post, loading, error } = useDoc<Post>(postRef);
   
   const [likes, setLikes] = useState(0);

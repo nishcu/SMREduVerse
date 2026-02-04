@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter, useParams } from 'next/navigation';
+import { use, useEffect, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { CheckCircle, Loader2, XCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function CheckoutDynamicPage() {
-    const params = useParams();
+export default function CheckoutDynamicPage({ params }: { params: Promise<{ slug: string[] }> }) {
+    const { slug } = use(params);
     const searchParams = useSearchParams();
     const router = useRouter();
     const [isVerifying, setIsVerifying] = useState(true);
@@ -15,8 +15,6 @@ export default function CheckoutDynamicPage() {
         success: boolean;
         message: string;
     } | null>(null);
-
-    const slug = params.slug as string[];
     const isSuccess = slug && slug[0] === 'success';
     const isFailure = slug && slug[0] === 'failure';
 

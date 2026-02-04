@@ -1,6 +1,6 @@
 
 'use client';
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -45,7 +45,8 @@ const LessonSchema = z.object({
 type LessonFormValues = z.infer<typeof LessonSchema>;
 
 
-export default function CreateLessonPage({ params }: { params: { id: string, chapterId: string } }) {
+export default function CreateLessonPage({ params }: { params: Promise<{ id: string; chapterId: string }> }) {
+  const { id, chapterId } = use(params);
   const { firebaseUser, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -87,8 +88,8 @@ export default function CreateLessonPage({ params }: { params: { id: string, cha
         content: finalContent,
         uploadedFileUrl: uploadedFileUrl,
         idToken,
-        courseId: params.id,
-        chapterId: params.chapterId
+        courseId: id,
+        chapterId
     });
 
     if (result.success) {
@@ -96,7 +97,7 @@ export default function CreateLessonPage({ params }: { params: { id: string, cha
         title: 'Lesson Created!',
         description: 'Your new lesson has been added to the chapter.',
       });
-      router.push(`/courses/${params.id}/chapters/${params.chapterId}/edit`);
+      router.push(`/courses/${id}/chapters/${chapterId}/edit`);
     } else {
         setError(result.error || 'An unknown error occurred.');
     }

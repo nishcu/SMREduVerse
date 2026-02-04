@@ -1,6 +1,6 @@
 
 'use client';
-import { useParams } from 'next/navigation';
+import { use } from 'react';
 import { useDoc } from '@/firebase';
 import { doc, DocumentReference, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -106,9 +106,8 @@ function ProfileDetails({ user }: { user: User }) {
   )
 }
 
-export default function ProfilePage() {
-  const params = useParams();
-  const uid = params.uid as string;
+export default function ProfilePage({ params }: { params: Promise<{ uid: string }> }) {
+  const { uid } = use(params);
   const { user: currentUser, firebaseUser } = useAuth();
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
 

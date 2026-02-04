@@ -1,6 +1,6 @@
 
 'use client';
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -31,7 +31,8 @@ const ChapterSchema = z.object({
 type ChapterFormValues = z.infer<typeof ChapterSchema>;
 
 
-export default function CreateChapterPage({ params }: { params: { id: string } }) {
+export default function CreateChapterPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const { firebaseUser, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -54,14 +55,14 @@ export default function CreateChapterPage({ params }: { params: { id: string } }
     setIsPending(true);
     setError(null);
     const idToken = await firebaseUser.getIdToken();
-    const result = await createChapterAction({ ...data, courseId: params.id, idToken });
+    const result = await createChapterAction({ ...data, courseId: id, idToken });
 
     if (result.success) {
         toast({
             title: 'Chapter Created!',
             description: 'Your new chapter has been added to the course.',
         });
-        router.push(`/courses/${params.id}/edit`);
+        router.push(`/courses/${id}/edit`);
     } else {
         setError(result.error || 'An unknown error occurred.');
     }

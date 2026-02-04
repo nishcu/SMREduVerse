@@ -1,7 +1,7 @@
 
 'use client';
 import { use, useEffect, useState, useTransition } from 'react';
-import { notFound, useRouter, useParams } from 'next/navigation';
+import { notFound, useRouter } from 'next/navigation';
 import { getPartnerDataAction } from '../actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -64,9 +64,8 @@ function PageSkeleton() {
     )
 }
 
-export default function PartnerDetailPage() {
-  const params = useParams();
-  const id = params.id as string;
+export default function PartnerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();

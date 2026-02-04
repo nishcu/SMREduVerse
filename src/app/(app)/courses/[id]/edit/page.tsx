@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { use } from 'react';
+import { useRouter } from 'next/navigation';
 import { useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, DocumentReference } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -30,10 +31,9 @@ function EditCoursePageSkeleton() {
   );
 }
 
-export default function EditCoursePage() {
-  const params = useParams();
+export default function EditCoursePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: courseId } = use(params);
   const router = useRouter();
-  const courseId = params.id as string;
 
   const courseRef = doc(db, 'courses', courseId) as DocumentReference<Course>;
   const { data: course, loading: loadingCourse, error: errorCourse } = useDoc<Course>(courseRef);

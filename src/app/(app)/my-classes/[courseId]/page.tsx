@@ -1,6 +1,7 @@
 
 'use client';
-import { useParams, notFound } from 'next/navigation';
+import { use } from 'react';
+import { notFound } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, DocumentReference } from 'firebase/firestore';
@@ -32,9 +33,8 @@ function PageSkeleton() {
   );
 }
 
-export default function MyClassDetailPage() {
-  const params = useParams();
-  const courseId = params.courseId as string;
+export default function MyClassDetailPage({ params }: { params: Promise<{ courseId: string }> }) {
+  const { courseId } = use(params);
   const { user, firebaseUser } = useAuth();
   const [selectedLesson, setSelectedLesson] = useState<LessonContent | null>(null);
 

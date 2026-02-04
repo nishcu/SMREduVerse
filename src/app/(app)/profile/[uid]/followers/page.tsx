@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { use, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -90,9 +89,8 @@ function FollowersSkeleton() {
   );
 }
 
-export default function FollowersPage() {
-  const params = useParams();
-  const uid = params.uid as string;
+export default function FollowersPage({ params }: { params: Promise<{ uid: string }> }) {
+  const { uid } = use(params);
   const { firebaseUser } = useAuth();
   const { toast } = useToast();
   const [followers, setFollowers] = useState<User[]>([]);

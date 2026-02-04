@@ -1,4 +1,5 @@
-export default function UserPostsPage({ params }: { params: { uid: string } }) {
+export default async function UserPostsPage({ params }: { params: Promise<{ uid: string }> }) {
+  await params; // unwrap for Next.js 15 (uid not used in this page yet)
   return (
     <div className="space-y-8">
       <div>
