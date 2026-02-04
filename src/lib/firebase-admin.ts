@@ -35,7 +35,7 @@ function getFirebaseAdmin() {
     }
     
     // Normalize private key for various env formats (Vercel, Windows, etc.)
-    let normalizedPrivateKey = requiredVars.privateKey!
+    const normalizedPrivateKey = requiredVars.privateKey!
       // strip surrounding quotes and whitespace
       .replace(/^["'\s]+|["'\s]+$/g, '')
       // convert escaped newlines to actual newlines (when stored as literal \n in env)
